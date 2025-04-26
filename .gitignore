@@ -1,0 +1,14 @@
+# node_modules klasörünü yok say (frontend/backend nodejs kullanıyorsa)
+node_modules/
+
+# build klasörleri
+dist/
+build/
+
+# geçici dosyalar
+*.log
+*.tmp
+
+# IDE dosyaları
+.vscode/
+.idea/
