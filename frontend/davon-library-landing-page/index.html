@@ -9,6 +9,216 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Modern Modal Styling */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            position: relative;
+            background: linear-gradient(145deg, #ffffff, #f5f5f5);
+            margin: 5% auto;
+            padding: 30px;
+            width: 90%;
+            max-width: 400px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .close-button {
+            position: absolute;
+            right: 20px;
+            top: 15px;
+            color: #666;
+            font-size: 24px;
+            font-weight: bold;
+            transition: color 0.3s ease;
+        }
+
+        .close-button:hover {
+            color: #333;
+            cursor: pointer;
+        }
+
+        .modal h2 {
+            color: #2c3e50;
+            margin-bottom: 25px;
+            text-align: center;
+            font-size: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        .form-group input:focus {
+            border-color: #3498db;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        .form-button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(145deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .form-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .form-button:active {
+            transform: translateY(0);
+        }
+
+        .form-footer {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .form-footer a {
+            color: #3498db;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .form-footer a:hover {
+            text-decoration: underline;
+        }
+
+        .social-login {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .social-login p {
+            color: #666;
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .social-login p::before,
+        .social-login p::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            width: 30%;
+            height: 1px;
+            background-color: #e0e0e0;
+        }
+
+        .social-login p::before {
+            left: 0;
+        }
+
+        .social-login p::after {
+            right: 0;
+        }
+
+        .social-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .social-button {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            transition: transform 0.2s ease;
+        }
+
+        .social-button:hover {
+            transform: translateY(-2px);
+        }
+
+        .google {
+            background-color: #DB4437;
+        }
+
+        .facebook {
+            background-color: #4267B2;
+        }
+
+        .twitter {
+            background-color: #1DA1F2;
+        }
+
+        .nav-action-btn {
+            background: linear-gradient(90deg, #3498db 0%, #6dd5fa 100%);
+            color: #fff !important;
+            padding: 8px 22px;
+            border-radius: 25px;
+            font-weight: 600;
+            margin-left: 10px;
+            box-shadow: 0 2px 8px rgba(52,152,219,0.10);
+            transition: background 0.3s, transform 0.2s, box-shadow 0.2s;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .nav-action-btn:hover {
+            background: linear-gradient(90deg, #2980b9 0%, #3498db 100%);
+            color: #fff;
+            transform: translateY(-2px) scale(1.04);
+            box-shadow: 0 4px 16px rgba(52,152,219,0.18);
+            text-decoration: none;
+        }
+    </style>
 </head>
 <body>
     <header class="header">
@@ -20,6 +230,8 @@
                 <li><a href="#features">Features</a></li>
                 <li><a href="#about">About</a></li>
                 <li><a href="#contact">Contact</a></li>
+                <li><a href="#" id="loginBtn" class="nav-action-btn"><i class="fas fa-sign-in-alt"></i> Login</a></li>
+                <li><a href="#" id="registerBtn" class="nav-action-btn"><i class="fas fa-user-plus"></i> Register</a></li>
             </ul>
         </nav>
     </header>
@@ -82,5 +294,162 @@
             <p>&copy; 2024 Davon Library Management System. All rights reserved.</p>
         </div>
     </footer>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="closeLoginModal">&times;</span>
+            <h2><i class="fas fa-user-circle"></i> Welcome Back</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="loginUsername"><i class="fas fa-user"></i> Username</label>
+                    <input type="text" id="loginUsername" name="username" placeholder="Enter your username" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword"><i class="fas fa-lock"></i> Password</label>
+                    <input type="password" id="loginPassword" name="password" placeholder="Enter your password" required>
+                </div>
+                <button type="submit" class="form-button">Sign In</button>
+                <div class="form-footer">
+                    <p>Don't have an account? <a href="#" id="switchToRegister">Register</a></p>
+                </div>
+                <div class="social-login">
+                    <p>Or continue with</p>
+                    <div class="social-buttons">
+                        <a href="#" class="social-button google"><i class="fab fa-google"></i></a>
+                        <a href="#" class="social-button facebook"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="social-button twitter"><i class="fab fa-twitter"></i></a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Registration Modal -->
+    <div id="registerModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="closeRegisterModal">&times;</span>
+            <h2><i class="fas fa-user-plus"></i> Create Account</h2>
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="registerUsername"><i class="fas fa-user"></i> Username</label>
+                    <input type="text" id="registerUsername" name="username" placeholder="Choose a username" required>
+                </div>
+                <div class="form-group">
+                    <label for="registerEmail"><i class="fas fa-envelope"></i> Email</label>
+                    <input type="email" id="registerEmail" name="email" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label for="registerPassword"><i class="fas fa-lock"></i> Password</label>
+                    <input type="password" id="registerPassword" name="password" placeholder="Create a password" required>
+                </div>
+                <button type="submit" class="form-button">Create Account</button>
+                <div class="form-footer">
+                    <p>Already have an account? <a href="#" id="switchToLogin">Sign In</a></p>
+                </div>
+                <div class="social-login">
+                    <p>Or sign up with</p>
+                    <div class="social-buttons">
+                        <a href="#" class="social-button google"><i class="fab fa-google"></i></a>
+                        <a href="#" class="social-button facebook"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="social-button twitter"><i class="fab fa-twitter"></i></a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Get modal elements
+        const loginModal = document.getElementById('loginModal');
+        const registerModal = document.getElementById('registerModal');
+
+        // Get button elements
+        const loginBtn = document.getElementById('loginBtn');
+        const registerBtn = document.getElementById('registerBtn');
+        const ctaButton = document.querySelector('.cta-button');
+
+        // Get close button elements
+        const closeLoginModal = document.getElementById('closeLoginModal');
+        const closeRegisterModal = document.getElementById('closeRegisterModal');
+
+        // Configuration - This can be changed based on deployment environment
+        const config = {
+            apiHost: window.location.hostname, // Use same hostname as landing page
+            apiPort: "3000", // Hardcoded to 3000 where Next.js app runs
+            useHttps: window.location.protocol === 'https:'
+        };
+
+        // Build the base URL
+        const protocol = config.useHttps ? 'https://' : 'http://';
+        const nextAppBaseUrl = `${protocol}${config.apiHost}:${config.apiPort}`;
+        
+        console.log(`Next.js app will connect to: ${nextAppBaseUrl}`);
+
+        // Event listeners to open modals
+        loginBtn.onclick = function(event) {
+            event.preventDefault(); // Prevent default anchor behavior
+            // Open login in same window, replacing current URL
+            window.location.replace(`${nextAppBaseUrl}/login`);
+        }
+        registerBtn.onclick = function(event) {
+            event.preventDefault(); // Prevent default anchor behavior
+            // Open register in same window, replacing current URL
+            window.location.replace(`${nextAppBaseUrl}/register`);
+        }
+
+        // CTA Button event listener
+        ctaButton.onclick = function() {
+            // Replace current URL instead of adding to history
+            window.location.replace(`${nextAppBaseUrl}/login`);
+        }
+
+        // Event listeners to close modals
+        closeLoginModal.onclick = function() {
+            loginModal.style.display = 'none';
+        }
+        closeRegisterModal.onclick = function() {
+            registerModal.style.display = 'none';
+        }
+
+        // Close modals if user clicks outside of the modal content
+        window.onclick = function(event) {
+            if (event.target == loginModal) {
+                loginModal.style.display = 'none';
+            }
+            if (event.target == registerModal) {
+                registerModal.style.display = 'none';
+            }
+        }
+
+        // Add switch between login and register
+        document.getElementById('switchToRegister').onclick = function(event) {
+            event.preventDefault();
+            loginModal.style.display = 'none';
+            registerModal.style.display = 'block';
+        }
+
+        document.getElementById('switchToLogin').onclick = function(event) {
+            event.preventDefault();
+            registerModal.style.display = 'none';
+            loginModal.style.display = 'block';
+        }
+
+        // Handle Login Form Submission
+        const loginForm = document.getElementById('loginForm');
+        loginForm.onsubmit = function(event) {
+            event.preventDefault();
+            // Replace URL instead of adding to history
+            window.location.replace(`${nextAppBaseUrl}/login`);
+        }
+
+        // Handle Registration Form Submission
+        const registerForm = document.getElementById('registerForm');
+        registerForm.onsubmit = function(event) {
+            event.preventDefault();
+            // Replace URL instead of adding to history
+            window.location.replace(`${nextAppBaseUrl}/register`);
+        }
+    </script>
 </body>
 </html> 
