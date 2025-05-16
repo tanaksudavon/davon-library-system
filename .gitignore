@@ -13,3 +13,8 @@ build/
 .vscode/
 .idea/
 frontend/davon-library-webui.zip
+
+# Large files
+*.zip
+frontend/davon-library-webui.zip
+frontend/davon-library-webui/node_modules/
