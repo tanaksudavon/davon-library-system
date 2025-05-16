@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { authService } from '@/lib/services/auth-service';
 
@@ -18,6 +18,17 @@ export default function LoginForm() {
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
 
+  useEffect(() => {
+    console.log('🟢 LoginForm MOUNT oldu');
+
+    return () => {
+      console.log('🔴 LoginForm UNMOUNT oluyor');
+    };
+  }, []);
+
+  useEffect(() => {
+    console.log('🔄 LoginForm UPDATE: formData değişti', formData);
+  }, [formData]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -26,6 +37,7 @@ export default function LoginForm() {
       [name]: value
     }));
   };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -92,4 +104,4 @@ export default function LoginForm() {
       </form>
     </div>
   );
-} 
+}
