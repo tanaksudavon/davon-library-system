@@ -20,11 +20,29 @@ export default function LoginForm() {
 
   useEffect(() => {
     console.log('🟢 LoginForm MOUNT oldu');
+    
+    // Clear any existing auth data to start fresh
+    if (typeof window !== 'undefined') {
+      // Don't clear during development to make testing easier
+      // localStorage.removeItem('user');
+      // localStorage.removeItem('token');
+      
+      // Check if we already have valid auth data
+      const currentUser = authService.getCurrentUser();
+      if (currentUser) {
+        console.log('User already logged in:', currentUser);
+        if (currentUser.role === 'admin') {
+          router.push('/dashboard');
+        } else {
+          router.push('/profile');
+        }
+      }
+    }
 
     return () => {
       console.log('🔴 LoginForm UNMOUNT oluyor');
     };
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     console.log('🔄 LoginForm UPDATE: formData değişti', formData);
@@ -44,13 +62,27 @@ export default function LoginForm() {
     setIsLoading(true);
 
     try {
+      console.log('Attempting login with:', formData);
       const response = await authService.login(formData.email, formData.password);
-      if (response.user.role === 'admin') {
-        router.push('/dashboard');
-      } else {
-        router.push('/profile');
+      console.log('Login successful, response:', response);
+      
+      // Double check localStorage was set correctly
+      if (typeof window !== 'undefined') {
+        console.log('LocalStorage after login:');
+        console.log('- user:', localStorage.getItem('user'));
+        console.log('- token:', localStorage.getItem('token'));
       }
+      
+      // Wait a moment to ensure local storage is updated
+      setTimeout(() => {
+        if (response.user.role === 'admin') {
+          router.push('/dashboard');
+        } else {
+          router.push('/profile');
+        }
+      }, 100);
     } catch (err) {
+      console.error('Login error:', err);
       setError('Invalid email or password');
     } finally {
       setIsLoading(false);
