@@ -1,31 +1,63 @@
 import { User, UserLoginInput, AuthResponse } from '@/types/user';
-import { getAllUsers, createUser } from './user-service';
+import { MOCK_ADMIN_USER, MOCK_NORMAL_USER } from './mockUser';
+import { userService } from './user-service';
 
 class AuthService {
+    constructor() {
+        // Initialize immediately if running in browser
+        if (typeof window !== 'undefined') {
+            // Force reinitialize users in localStorage on service creation
+            this.forceReinitializeUsers();
+        }
+    }
+
+    // Initialize local storage with default users if empty
+    private initializeUsers() {
+        const usersJson = localStorage.getItem('users');
+        if (!usersJson || JSON.parse(usersJson).length === 0) {
+            console.log('Initializing users in localStorage');
+            const initialUsers = [MOCK_ADMIN_USER, MOCK_NORMAL_USER];
+            localStorage.setItem('users', JSON.stringify(initialUsers));
+        }
+    }
+
+    // Force reinitialize users in localStorage (use for testing or when users are corrupted)
+    private forceReinitializeUsers() {
+        console.log('Force reinitializing users in localStorage');
+        localStorage.removeItem('users'); // Clear existing users
+        const initialUsers = [MOCK_ADMIN_USER, MOCK_NORMAL_USER];
+        localStorage.setItem('users', JSON.stringify(initialUsers));
+        console.log('Users reinitialized:', initialUsers);
+    }
+
     async login(email: string, password: string): Promise<AuthResponse> {
+        console.log('Login attempt with:', { email });
+        
         // Get all users from localStorage
-        const users = getAllUsers();
+        const users = userService.getAllUsers();
+        console.log('Available users:', users);
         
         // Find user with matching email and password
-        const user = users.find(u => u.email === email);
+        const user = users.find(u => u.email === email && u.password === password);
         
-        if (!user || user.password !== password) {
+        if (!user) {
+            console.error('Invalid credentials');
             throw new Error('Invalid email or password');
         }
         
-        // Generate a simple token (in a real app, this would be more secure)
+        console.log('User found:', user);
+        
+        // Generate a simple token
         const token = btoa(user.email + ':' + new Date().getTime());
         
         // Store token in localStorage
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('token', token);
-            // Also store user object without password
-            const { password: _, ...userWithoutPassword } = user;
-            localStorage.setItem('user', JSON.stringify(userWithoutPassword));
-        }
+        localStorage.setItem('token', token);
+        
+        // Store user object without password
+        const { password: _, ...userWithoutPassword } = user;
+        localStorage.setItem('user', JSON.stringify(userWithoutPassword));
         
         // Return user info and token
-        const { password: _, ...userWithoutPassword } = user;
         return {
             user: userWithoutPassword,
             token
@@ -34,7 +66,7 @@ class AuthService {
 
     async register(username: string, email: string, password: string): Promise<AuthResponse> {
         // Check if user with this email or username already exists
-        const users = getAllUsers();
+        const users = userService.getAllUsers();
         
         // Check email
         const existingUserEmail = users.find(u => u.email === email);
@@ -49,7 +81,7 @@ class AuthService {
         }
         
         // Create new user
-        const newUser = createUser({
+        const newUser = userService.createUser({
             username,
             email,
             password,
@@ -60,15 +92,13 @@ class AuthService {
         const token = btoa(newUser.email + ':' + new Date().getTime());
         
         // Store token in localStorage
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('token', token);
-            // Also store user object without password
-            const { password: _, ...userWithoutPassword } = newUser;
-            localStorage.setItem('user', JSON.stringify(userWithoutPassword));
-        }
+        localStorage.setItem('token', token);
+        
+        // Store user object without password
+        const { password: _, ...userWithoutPassword } = newUser;
+        localStorage.setItem('user', JSON.stringify(userWithoutPassword));
         
         // Return user info without password and token
-        const { password: _, ...userWithoutPassword } = newUser;
         return {
             user: userWithoutPassword,
             token
@@ -92,43 +122,43 @@ class AuthService {
     }
 
     getCurrentUser(): Omit<User, 'password'> | null {
-        try {
-            // First try to get user directly from localStorage
-            if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined') {
+            try {
+                // First try to get user directly from localStorage
                 const userJson = localStorage.getItem('user');
                 if (userJson) {
-                    const user = JSON.parse(userJson);
-                    if (user && user.email) {
-                        return user;
-                    }
+                    return JSON.parse(userJson);
                 }
-            }
-            
-            // Fall back to token-based lookup if direct user lookup fails
-            const token = this.getToken();
-            if (!token) return null;
-            
-            // Decode token to get email
-            const decodedToken = atob(token);
-            const email = decodedToken.split(':')[0];
-            
-            // Find user with this email
-            const users = getAllUsers();
-            const user = users.find(u => u.email === email);
-            
-            if (!user) return null;
-            
-            // Store user in localStorage for future use
-            const { password, ...userWithoutPassword } = user;
-            if (typeof window !== 'undefined') {
+                
+                // Fall back to token-based lookup
+                const token = this.getToken();
+                if (!token) return null;
+                
+                const decodedToken = atob(token);
+                const email = decodedToken.split(':')[0];
+                
+                const users = userService.getAllUsers();
+                const user = users.find(u => u.email === email);
+                
+                if (!user) return null;
+                
+                const { password, ...userWithoutPassword } = user;
                 localStorage.setItem('user', JSON.stringify(userWithoutPassword));
+                
+                return userWithoutPassword;
+            } catch (error) {
+                console.error('Error getting current user:', error);
+                this.logout(); // Clear potentially corrupted data
+                return null;
             }
-            
-            return userWithoutPassword;
-        } catch (error) {
-            console.error('Error getting current user:', error);
-            return null;
         }
+        return null;
+    }
+
+    // Helper to check what credentials are valid (for debugging)
+    getValidCredentials(): {email: string, password: string}[] {
+        const users = userService.getAllUsers();
+        return users.map(u => ({ email: u.email, password: u.password }));
     }
 }
 
