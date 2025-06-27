@@ -52,15 +52,17 @@ export function UserProfileEdit(): React.ReactElement | null {
             }
 
             const updatedUser = await userService.updateUser(user.id, updateData);
-            const token = authService.getToken() || '';
-            setAuth(updatedUser, token);
-            setIsEditing(false);
-            reset({
-                username: updatedUser.username,
-                email: updatedUser.email,
-                password: '',
-                confirmPassword: '',
-            });
+            if (updatedUser) {
+                const token = authService.getToken() || '';
+                setAuth(updatedUser, token);
+                setIsEditing(false);
+                reset({
+                    username: updatedUser.username,
+                    email: updatedUser.email,
+                    password: '',
+                    confirmPassword: '',
+                });
+            }
         } catch (error) {
             setError('root', {
                 message: 'Failed to update profile. Please try again.',
