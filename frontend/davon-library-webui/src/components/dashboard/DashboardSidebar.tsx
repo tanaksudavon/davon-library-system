@@ -32,19 +32,19 @@ export default function DashboardSidebar() {
     },
     {
       name: 'Books',
-      href: '/books',
+      href: '/dashboard/books',
       icon: <BookOpenIcon className="h-6 w-6" />,
       adminOnly: false
     },
     {
       name: 'Users',
-      href: '/users',
+      href: '/dashboard/users',
       icon: <UsersIcon className="h-6 w-6" />,
       adminOnly: true
     },
     {
       name: 'Profile',
-      href: '/profile',
+      href: '/dashboard/profile',
       icon: <UserIcon className="h-6 w-6" />,
       adminOnly: false
     },
