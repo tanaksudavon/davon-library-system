@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { User, UserUpdateInput } from '@/types/user';
-import { updateUser } from '@/lib/services/user-service';
+import { userService } from '@/lib/services/user-service';
 
 interface UserEditModalProps {
     user: User;
@@ -20,7 +20,7 @@ export default function UserEditModal({ user, onClose, onUpdate }: UserEditModal
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await updateUser(user.id, formData);
+            userService.updateUser(user.id, formData);
             onUpdate();
             onClose();
         } catch (error) {
