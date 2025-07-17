@@ -3,7 +3,7 @@ package org.acme.service;
 import org.acme.model.Book;
 import org.acme.model.Author;
 import org.acme.model.User;
-import org.acme.model.Loan;
+
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
