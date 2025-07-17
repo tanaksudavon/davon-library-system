@@ -15,7 +15,7 @@ export default function HomePage() {
             if (user.role === 'admin') {
                 router.push('/dashboard');
             } else {
-                router.push('/profile');
+                router.push('/dashboard/profile');
             }
         } else {
             // Redirect to login if not logged in
