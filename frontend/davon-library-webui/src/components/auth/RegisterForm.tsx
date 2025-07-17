@@ -55,7 +55,7 @@ export default function RegisterForm() {
       if (response.user.role === 'admin') {
         router.push('/dashboard');
       } else {
-        router.push('/profile');
+        router.push('/dashboard/profile');
       }
     } catch (err) {
       console.error('Registration error:', err);
