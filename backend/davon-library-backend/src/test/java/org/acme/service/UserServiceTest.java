@@ -157,14 +157,13 @@ class UserServiceTest {
     void testCreateUserWithNullUser() {
         // Given
         User nullUser = null;
-        doNothing().when(userRepository).persist(nullUser);
 
         // When
         User result = userService.createUser(nullUser);
 
         // Then
         assertNull(result);
-        verify(userRepository, times(1)).persist(nullUser);
+        verify(userRepository, times(0)).persist(any(User.class));
     }
 
     @Test

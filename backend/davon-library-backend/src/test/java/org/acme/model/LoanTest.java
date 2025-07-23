@@ -15,6 +15,8 @@ import java.time.LocalDateTime;
 class LoanTest {
 
     private Loan loan;
+    private Book testBook;
+    private User testUser;
     private LocalDate borrowDate;
     private LocalDate returnDate;
     private LocalDate dueDate;
@@ -27,6 +29,17 @@ class LoanTest {
         dueDate = LocalDate.of(2023, 2, 15);
         now = LocalDateTime.now();
         loan = new Loan();
+
+        // Create test Book and User objects
+        testBook = new Book();
+        testBook.setId(1L);
+        testBook.setTitle("Test Book");
+        testBook.setIsbn("978-0123456789");
+
+        testUser = new User();
+        testUser.setId(1L);
+        testUser.setUsername("testuser");
+        testUser.setEmail("test@example.com");
     }
 
     @Test
@@ -35,8 +48,8 @@ class LoanTest {
         Loan newLoan = new Loan();
         assertNotNull(newLoan);
         assertNull(newLoan.getId());
-        assertNull(newLoan.getBookId());
-        assertNull(newLoan.getUserId());
+        assertNull(newLoan.getBook());
+        assertNull(newLoan.getUser());
         assertNull(newLoan.getBorrowDate());
         assertNull(newLoan.getReturnDate());
         assertNull(newLoan.getDueDate());
@@ -49,12 +62,12 @@ class LoanTest {
     @Test
     @DisplayName("Test all-args constructor")
     void testAllArgsConstructor() {
-        Loan newLoan = new Loan(1L, 1L, 1L, borrowDate, returnDate, dueDate,
+        Loan newLoan = new Loan(1L, testBook, testUser, borrowDate, returnDate, dueDate,
                 LoanStatus.RETURNED, "Book returned in good condition", now, now);
 
         assertEquals(1L, newLoan.getId());
-        assertEquals(1L, newLoan.getBookId());
-        assertEquals(1L, newLoan.getUserId());
+        assertEquals(testBook, newLoan.getBook());
+        assertEquals(testUser, newLoan.getUser());
         assertEquals(borrowDate, newLoan.getBorrowDate());
         assertEquals(returnDate, newLoan.getReturnDate());
         assertEquals(dueDate, newLoan.getDueDate());
@@ -68,8 +81,8 @@ class LoanTest {
     @DisplayName("Test setters and getters")
     void testSettersAndGetters() {
         loan.setId(1L);
-        loan.setBookId(2L);
-        loan.setUserId(3L);
+        loan.setBook(testBook);
+        loan.setUser(testUser);
         loan.setBorrowDate(borrowDate);
         loan.setReturnDate(returnDate);
         loan.setDueDate(dueDate);
@@ -79,8 +92,8 @@ class LoanTest {
         loan.setUpdatedAt(now);
 
         assertEquals(1L, loan.getId());
-        assertEquals(2L, loan.getBookId());
-        assertEquals(3L, loan.getUserId());
+        assertEquals(testBook, loan.getBook());
+        assertEquals(testUser, loan.getUser());
         assertEquals(borrowDate, loan.getBorrowDate());
         assertEquals(returnDate, loan.getReturnDate());
         assertEquals(dueDate, loan.getDueDate());
@@ -157,11 +170,20 @@ class LoanTest {
     @Test
     @DisplayName("Test equals and hashCode")
     void testEqualsAndHashCode() {
-        Loan loan1 = new Loan(1L, 1L, 1L, borrowDate, returnDate, dueDate,
+        Loan loan1 = new Loan(1L, testBook, testUser, borrowDate, returnDate, dueDate,
                 LoanStatus.RETURNED, "Test note", now, now);
-        Loan loan2 = new Loan(1L, 1L, 1L, borrowDate, returnDate, dueDate,
+        Loan loan2 = new Loan(1L, testBook, testUser, borrowDate, returnDate, dueDate,
                 LoanStatus.RETURNED, "Test note", now, now);
-        Loan loan3 = new Loan(2L, 2L, 2L, borrowDate, null, dueDate,
+
+        Book differentBook = new Book();
+        differentBook.setId(2L);
+        differentBook.setTitle("Different Book");
+
+        User differentUser = new User();
+        differentUser.setId(2L);
+        differentUser.setUsername("differentuser");
+
+        Loan loan3 = new Loan(2L, differentBook, differentUser, borrowDate, null, dueDate,
                 LoanStatus.BORROWED, "Different note", now, now);
 
         assertEquals(loan1, loan2);
@@ -174,24 +196,36 @@ class LoanTest {
     @DisplayName("Test toString method")
     void testToString() {
         loan.setId(1L);
-        loan.setBookId(2L);
-        loan.setUserId(3L);
+        loan.setBook(testBook);
+        loan.setUser(testUser);
         loan.setStatus(LoanStatus.BORROWED);
 
         String toString = loan.toString();
         assertNotNull(toString);
         assertTrue(toString.contains("1"));
-        assertTrue(toString.contains("2"));
-        assertTrue(toString.contains("3"));
         assertTrue(toString.contains("BORROWED"));
+    }
+
+    @Test
+    @DisplayName("Test object relationships")
+    void testObjectRelationships() {
+        loan.setBook(testBook);
+        loan.setUser(testUser);
+
+        assertNotNull(loan.getBook());
+        assertNotNull(loan.getUser());
+        assertEquals("Test Book", loan.getBook().getTitle());
+        assertEquals("testuser", loan.getUser().getUsername());
+        assertEquals(1L, loan.getBook().getId());
+        assertEquals(1L, loan.getUser().getId());
     }
 
     @Test
     @DisplayName("Test null values handling")
     void testNullValues() {
         assertDoesNotThrow(() -> {
-            loan.setBookId(null);
-            loan.setUserId(null);
+            loan.setBook(null);
+            loan.setUser(null);
             loan.setBorrowDate(null);
             loan.setReturnDate(null);
             loan.setDueDate(null);
@@ -201,8 +235,8 @@ class LoanTest {
             loan.setUpdatedAt(null);
         });
 
-        assertNull(loan.getBookId());
-        assertNull(loan.getUserId());
+        assertNull(loan.getBook());
+        assertNull(loan.getUser());
         assertNull(loan.getBorrowDate());
         assertNull(loan.getReturnDate());
         assertNull(loan.getDueDate());
@@ -216,8 +250,8 @@ class LoanTest {
     @DisplayName("Test loan lifecycle scenarios")
     void testLoanLifecycleScenarios() {
         // Test new loan
-        loan.setBookId(1L);
-        loan.setUserId(1L);
+        loan.setBook(testBook);
+        loan.setUser(testUser);
         loan.setBorrowDate(LocalDate.now());
         loan.setDueDate(LocalDate.now().plusDays(14));
         loan.setStatus(LoanStatus.BORROWED);
@@ -245,36 +279,5 @@ class LoanTest {
 
         assertEquals(LoanStatus.LOST, loan.getStatus());
         assertEquals("Book reported lost by user", loan.getNotes());
-    }
-
-    @Test
-    @DisplayName("Test ID scenarios")
-    void testIdScenarios() {
-        // Test positive IDs
-        loan.setId(1L);
-        loan.setBookId(100L);
-        loan.setUserId(200L);
-
-        assertEquals(1L, loan.getId());
-        assertEquals(100L, loan.getBookId());
-        assertEquals(200L, loan.getUserId());
-
-        // Test large IDs
-        loan.setId(Long.MAX_VALUE);
-        loan.setBookId(Long.MAX_VALUE - 1);
-        loan.setUserId(Long.MAX_VALUE - 2);
-
-        assertEquals(Long.MAX_VALUE, loan.getId());
-        assertEquals(Long.MAX_VALUE - 1, loan.getBookId());
-        assertEquals(Long.MAX_VALUE - 2, loan.getUserId());
-
-        // Test zero IDs
-        loan.setId(0L);
-        loan.setBookId(0L);
-        loan.setUserId(0L);
-
-        assertEquals(0L, loan.getId());
-        assertEquals(0L, loan.getBookId());
-        assertEquals(0L, loan.getUserId());
     }
 }

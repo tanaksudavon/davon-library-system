@@ -21,6 +21,9 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import org.acme.model.Author;
+import org.acme.model.Category;
+
 /**
  * Unit tests for BookService class
  */
@@ -41,13 +44,32 @@ class BookServiceTest {
     void setUp() {
         LocalDateTime now = LocalDateTime.now();
 
+        // Create test Author and Category objects
+        Author testAuthor = new Author();
+        testAuthor.setId(1L);
+        testAuthor.setFirstName("F. Scott");
+        testAuthor.setLastName("Fitzgerald");
+
+        Category testCategory = new Category();
+        testCategory.setId(1L);
+        testCategory.setName("Fiction");
+
+        Author testAuthor2 = new Author();
+        testAuthor2.setId(2L);
+        testAuthor2.setFirstName("Harper");
+        testAuthor2.setLastName("Lee");
+
+        Category testCategory2 = new Category();
+        testCategory2.setId(2L);
+        testCategory2.setName("Literature");
+
         testBook = new Book(1L, "The Great Gatsby", "978-0743273565",
                 "A classic American novel", LocalDate.of(1925, 4, 10),
-                "gatsby.jpg", BookStatus.AVAILABLE, 1L, 1L, now, now);
+                "gatsby.jpg", BookStatus.AVAILABLE, testAuthor, testCategory, now, now);
 
         Book book2 = new Book(2L, "To Kill a Mockingbird", "978-0061120084",
                 "A novel about racial injustice", LocalDate.of(1960, 7, 11),
-                "mockingbird.jpg", BookStatus.BORROWED, 2L, 2L, now, now);
+                "mockingbird.jpg", BookStatus.BORROWED, testAuthor2, testCategory2, now, now);
 
         testBooks = Arrays.asList(testBook, book2);
     }
@@ -156,20 +178,28 @@ class BookServiceTest {
     void testCreateBookWithNullBook() {
         // Given
         Book nullBook = null;
-        doNothing().when(bookRepository).persist(nullBook);
 
         // When
         Book result = bookService.createBook(nullBook);
 
         // Then
         assertNull(result);
-        verify(bookRepository, times(1)).persist(nullBook);
+        verify(bookRepository, times(0)).persist(any(Book.class));
     }
 
     @Test
     @DisplayName("Test createBook with complete book data")
     void testCreateBookWithCompleteData() {
         // Given
+        Author completeAuthor = new Author();
+        completeAuthor.setId(1L);
+        completeAuthor.setFirstName("Complete");
+        completeAuthor.setLastName("Author");
+
+        Category completeCategory = new Category();
+        completeCategory.setId(1L);
+        completeCategory.setName("Complete Category");
+
         Book completeBook = new Book();
         completeBook.setTitle("Complete Book");
         completeBook.setIsbn("978-0987654321");
@@ -177,8 +207,8 @@ class BookServiceTest {
         completeBook.setPublishDate(LocalDate.of(2023, 1, 1));
         completeBook.setCoverImage("complete.jpg");
         completeBook.setStatus(BookStatus.AVAILABLE);
-        completeBook.setAuthorId(1L);
-        completeBook.setCategoryId(1L);
+        completeBook.setAuthor(completeAuthor);
+        completeBook.setCategory(completeCategory);
         completeBook.setCreatedAt(LocalDateTime.now());
         completeBook.setUpdatedAt(LocalDateTime.now());
 
@@ -321,5 +351,62 @@ class BookServiceTest {
         verify(bookRepository, times(1)).findByIdOptional(1L);
         verify(bookRepository, times(1)).findByIdOptional(99L);
         verify(bookRepository, times(1)).findByIdOptional(2L);
+    }
+
+    @Test
+    @DisplayName("Debug BookService step-by-step")
+    void debugBookServiceStepByStep() {
+        // BREAKPOINT 1: Set a breakpoint here to start debugging
+        System.out.println("=== Starting BookService Debug ===");
+
+        // Create test data
+        Author debugAuthor = new Author();
+        debugAuthor.setId(999L);
+        debugAuthor.setFirstName("Debug");
+        debugAuthor.setLastName("Author");
+
+        Category debugCategory = new Category();
+        debugCategory.setId(999L);
+        debugCategory.setName("Debug Category");
+
+        Book debugBook = new Book();
+        debugBook.setTitle("Debug Book");
+        debugBook.setIsbn("978-DEBUG-123");
+        debugBook.setDescription("A book for debugging purposes");
+        debugBook.setStatus(BookStatus.AVAILABLE);
+        debugBook.setAuthor(debugAuthor);
+        debugBook.setCategory(debugCategory);
+
+        // BREAKPOINT 2: Watch the debugBook object
+        System.out.println("Created debug book: " + debugBook.getTitle());
+
+        // Mock repository behavior
+        when(bookRepository.listAll()).thenReturn(Arrays.asList(debugBook));
+        when(bookRepository.findByIdOptional(999L)).thenReturn(Optional.of(debugBook));
+        doNothing().when(bookRepository).persist(debugBook);
+
+        // BREAKPOINT 3: Step INTO getAllBooks() method
+        List<Book> allBooks = bookService.getAllBooks();
+        System.out.println("Retrieved " + allBooks.size() + " books");
+
+        // BREAKPOINT 4: Step INTO getBookById() method
+        Optional<Book> foundBook = bookService.getBookById(999L);
+        System.out.println("Found book: " + foundBook.isPresent());
+
+        // BREAKPOINT 5: Step INTO createBook() method
+        Book createdBook = bookService.createBook(debugBook);
+        System.out.println("Created book: " + (createdBook != null ? createdBook.getTitle() : "null"));
+
+        // BREAKPOINT 6: Step INTO deleteBook() method
+        bookService.deleteBook(999L);
+        System.out.println("Deleted book with ID: 999");
+
+        // Verify all operations worked
+        assertNotNull(allBooks);
+        assertEquals(1, allBooks.size());
+        assertTrue(foundBook.isPresent());
+        assertNotNull(createdBook);
+
+        System.out.println("=== BookService Debug Complete ===");
     }
 }
