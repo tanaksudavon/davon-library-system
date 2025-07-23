@@ -3,6 +3,7 @@ package org.acme.service;
 import org.acme.model.User;
 import org.acme.repository.UserRepository;
 
+import jakarta.transaction.Transactional;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.List;
@@ -22,7 +23,13 @@ public class UserService {
         return userRepository.findByIdOptional(id);
     }
 
+    @Transactional
     public User createUser(User user) {
+        if (user == null) {
+            System.out.println("Kullanıcı oluşturuluyor: null");
+            return null;
+        }
+        System.out.println("Kullanıcı oluşturuluyor: " + user.getUsername());
         userRepository.persist(user);
         return user;
     }

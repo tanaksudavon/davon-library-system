@@ -27,6 +27,9 @@ public class LoanService {
     }
 
     public Loan createLoan(Loan loan) {
+        if (loan == null) {
+            return null;
+        }
         loanRepository.persist(loan);
         return loan;
     }
