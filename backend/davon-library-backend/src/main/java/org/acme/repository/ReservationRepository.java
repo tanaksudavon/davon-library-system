@@ -9,6 +9,6 @@ import java.util.List;
 public class ReservationRepository implements PanacheRepository<Reservation> {
 
     public List<Reservation> findByUserId(Long userId) {
-        return list("userId", userId);
+        return list("user.id", userId);
     }
 }
