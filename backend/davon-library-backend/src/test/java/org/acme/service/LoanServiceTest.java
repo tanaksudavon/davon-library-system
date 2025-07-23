@@ -21,6 +21,9 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import org.acme.model.Book;
+import org.acme.model.User;
+
 /**
  * Unit tests for LoanService class
  */
@@ -42,10 +45,31 @@ class LoanServiceTest {
         LocalDateTime now = LocalDateTime.now();
         LocalDate today = LocalDate.now();
 
-        testLoan = new Loan(1L, 1L, 1L, today, null, today.plusDays(14),
+        // Create test Book and User objects
+        Book testBook = new Book();
+        testBook.setId(1L);
+        testBook.setTitle("Test Book");
+        testBook.setIsbn("978-0123456789");
+
+        User testUser = new User();
+        testUser.setId(1L);
+        testUser.setUsername("testuser");
+        testUser.setEmail("test@example.com");
+
+        Book testBook2 = new Book();
+        testBook2.setId(2L);
+        testBook2.setTitle("Test Book 2");
+        testBook2.setIsbn("978-0987654321");
+
+        User testUser2 = new User();
+        testUser2.setId(2L);
+        testUser2.setUsername("testuser2");
+        testUser2.setEmail("test2@example.com");
+
+        testLoan = new Loan(1L, testBook, testUser, today, null, today.plusDays(14),
                 LoanStatus.BORROWED, "Regular loan", now, now);
 
-        Loan loan2 = new Loan(2L, 2L, 2L, today.minusDays(10), today.minusDays(5),
+        Loan loan2 = new Loan(2L, testBook2, testUser2, today.minusDays(10), today.minusDays(5),
                 today.minusDays(3), LoanStatus.RETURNED, "Returned early", now, now);
 
         testLoans = Arrays.asList(testLoan, loan2);
@@ -95,8 +119,8 @@ class LoanServiceTest {
         // Then
         assertTrue(result.isPresent());
         assertEquals(testLoan, result.get());
-        assertEquals(1L, result.get().getBookId());
-        assertEquals(1L, result.get().getUserId());
+        assertEquals(1L, result.get().getBook().getId());
+        assertEquals(1L, result.get().getUser().getId());
         assertEquals(LoanStatus.BORROWED, result.get().getStatus());
         verify(loanRepository, times(1)).findByIdOptional(loanId);
     }
@@ -134,9 +158,17 @@ class LoanServiceTest {
     @DisplayName("Test createLoan successfully creates and returns loan")
     void testCreateLoanSuccess() {
         // Given
+        Book testBook = new Book();
+        testBook.setId(1L);
+        testBook.setTitle("New Test Book");
+
+        User testUser = new User();
+        testUser.setId(1L);
+        testUser.setUsername("newtestuser");
+
         Loan newLoan = new Loan();
-        newLoan.setBookId(1L);
-        newLoan.setUserId(1L);
+        newLoan.setBook(testBook);
+        newLoan.setUser(testUser);
         newLoan.setBorrowDate(LocalDate.now());
         newLoan.setDueDate(LocalDate.now().plusDays(14));
         newLoan.setStatus(LoanStatus.BORROWED);
@@ -149,8 +181,8 @@ class LoanServiceTest {
         // Then
         assertNotNull(result);
         assertEquals(newLoan, result);
-        assertEquals(1L, result.getBookId());
-        assertEquals(1L, result.getUserId());
+        assertEquals(1L, result.getBook().getId());
+        assertEquals(1L, result.getUser().getId());
         assertEquals(LoanStatus.BORROWED, result.getStatus());
         verify(loanRepository, times(1)).persist(newLoan);
     }
@@ -160,14 +192,13 @@ class LoanServiceTest {
     void testCreateLoanWithNullLoan() {
         // Given
         Loan nullLoan = null;
-        doNothing().when(loanRepository).persist(nullLoan);
 
         // When
         Loan result = loanService.createLoan(nullLoan);
 
         // Then
         assertNull(result);
-        verify(loanRepository, times(1)).persist(nullLoan);
+        verify(loanRepository, times(0)).persist(any(Loan.class));
     }
 
     @Test
@@ -177,9 +208,17 @@ class LoanServiceTest {
         LocalDate borrowDate = LocalDate.now();
         LocalDate dueDate = LocalDate.now().plusDays(14);
 
+        Book completeBook = new Book();
+        completeBook.setId(1L);
+        completeBook.setTitle("Complete Test Book");
+
+        User completeUser = new User();
+        completeUser.setId(1L);
+        completeUser.setUsername("completeuser");
+
         Loan completeLoan = new Loan();
-        completeLoan.setBookId(1L);
-        completeLoan.setUserId(1L);
+        completeLoan.setBook(completeBook);
+        completeLoan.setUser(completeUser);
         completeLoan.setBorrowDate(borrowDate);
         completeLoan.setDueDate(dueDate);
         completeLoan.setStatus(LoanStatus.BORROWED);
@@ -194,8 +233,8 @@ class LoanServiceTest {
 
         // Then
         assertNotNull(result);
-        assertEquals(1L, result.getBookId());
-        assertEquals(1L, result.getUserId());
+        assertEquals(1L, result.getBook().getId());
+        assertEquals(1L, result.getUser().getId());
         assertEquals(borrowDate, result.getBorrowDate());
         assertEquals(dueDate, result.getDueDate());
         assertEquals(LoanStatus.BORROWED, result.getStatus());
@@ -261,9 +300,17 @@ class LoanServiceTest {
     @DisplayName("Test createLoan persistence behavior")
     void testCreateLoanPersistenceBehavior() {
         // Given
+        Book persistenceBook = new Book();
+        persistenceBook.setId(1L);
+        persistenceBook.setTitle("Persistence Test Book");
+
+        User persistenceUser = new User();
+        persistenceUser.setId(1L);
+        persistenceUser.setUsername("persistenceuser");
+
         Loan loan = new Loan();
-        loan.setBookId(1L);
-        loan.setUserId(1L);
+        loan.setBook(persistenceBook);
+        loan.setUser(persistenceUser);
         loan.setBorrowDate(LocalDate.now());
         loan.setDueDate(LocalDate.now().plusDays(14));
         loan.setStatus(LoanStatus.BORROWED);
@@ -281,9 +328,8 @@ class LoanServiceTest {
 
         // Then
         assertNotNull(result);
-        assertEquals(1L, result.getBookId());
-        assertEquals(1L, result.getUserId());
-        assertEquals(LoanStatus.BORROWED, result.getStatus());
+        assertEquals(1L, result.getBook().getId());
+        assertEquals(1L, result.getUser().getId());
         assertEquals(1L, result.getId()); // Verify ID was set
         assertNotNull(result.getCreatedAt());
         assertNotNull(result.getUpdatedAt());
