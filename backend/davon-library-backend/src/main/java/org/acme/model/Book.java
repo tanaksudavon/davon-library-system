@@ -25,8 +25,15 @@ public class Book {
     private String coverImage;
     @Enumerated(EnumType.STRING)
     private BookStatus status;
-    private Long authorId;
-    private Long categoryId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "author_id", nullable = false)
+    private Author author;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id", nullable = false)
+    private Category category;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
