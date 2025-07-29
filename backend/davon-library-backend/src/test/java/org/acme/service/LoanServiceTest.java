@@ -67,10 +67,10 @@ class LoanServiceTest {
         testUser2.setEmail("test2@example.com");
 
         testLoan = new Loan(1L, testBook, testUser, today, null, today.plusDays(14),
-                LoanStatus.BORROWED, "Regular loan", now, now);
+                LoanStatus.BORROWED, 0, "Regular loan", now, now);
 
         Loan loan2 = new Loan(2L, testBook2, testUser2, today.minusDays(10), today.minusDays(5),
-                today.minusDays(3), LoanStatus.RETURNED, "Returned early", now, now);
+                today.minusDays(3), LoanStatus.RETURNED, 0, "Returned early", now, now);
 
         testLoans = Arrays.asList(testLoan, loan2);
     }

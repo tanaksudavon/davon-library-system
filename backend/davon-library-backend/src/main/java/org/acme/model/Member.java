@@ -1,9 +1,11 @@
 package org.acme.model;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.DiscriminatorValue;
 import java.time.LocalDateTime;
 
 @Entity
+@DiscriminatorValue("MEMBER")
 public class Member extends User {
 
     public Member() {

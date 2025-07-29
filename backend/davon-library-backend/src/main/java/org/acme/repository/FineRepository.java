@@ -5,7 +5,6 @@ import org.acme.model.Fine;
 import org.acme.model.FineStatus;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.List;
-import java.util.Optional;
 import java.time.LocalDate;
 
 @ApplicationScoped

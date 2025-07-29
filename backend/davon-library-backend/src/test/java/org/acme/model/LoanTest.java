@@ -63,7 +63,7 @@ class LoanTest {
     @DisplayName("Test all-args constructor")
     void testAllArgsConstructor() {
         Loan newLoan = new Loan(1L, testBook, testUser, borrowDate, returnDate, dueDate,
-                LoanStatus.RETURNED, "Book returned in good condition", now, now);
+                LoanStatus.RETURNED, 0, "Book returned in good condition", now, now);
 
         assertEquals(1L, newLoan.getId());
         assertEquals(testBook, newLoan.getBook());
@@ -171,9 +171,9 @@ class LoanTest {
     @DisplayName("Test equals and hashCode")
     void testEqualsAndHashCode() {
         Loan loan1 = new Loan(1L, testBook, testUser, borrowDate, returnDate, dueDate,
-                LoanStatus.RETURNED, "Test note", now, now);
+                LoanStatus.RETURNED, 0, "Test note", now, now);
         Loan loan2 = new Loan(1L, testBook, testUser, borrowDate, returnDate, dueDate,
-                LoanStatus.RETURNED, "Test note", now, now);
+                LoanStatus.RETURNED, 0, "Test note", now, now);
 
         Book differentBook = new Book();
         differentBook.setId(2L);
@@ -184,7 +184,7 @@ class LoanTest {
         differentUser.setUsername("differentuser");
 
         Loan loan3 = new Loan(2L, differentBook, differentUser, borrowDate, null, dueDate,
-                LoanStatus.BORROWED, "Different note", now, now);
+                LoanStatus.BORROWED, 1, "Different note", now, now);
 
         assertEquals(loan1, loan2);
         assertNotEquals(loan1, loan3);

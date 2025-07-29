@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -25,13 +26,27 @@ public class Reservation {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
+    @JsonBackReference("user-reservations")
     private User user;
 
+    @Column(name = "reservation_date")
     private LocalDate reservationDate;
+
+    @Column(name = "expiration_date")
     private LocalDate expirationDate;
+
     @Enumerated(EnumType.STRING)
     private ReservationStatus status;
+
+    @Column(name = "priority_level")
+    private Integer priorityLevel;
+
+    private String notes;
+
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
     // Getters and setters
