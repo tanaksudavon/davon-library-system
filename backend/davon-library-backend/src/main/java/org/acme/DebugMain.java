@@ -57,8 +57,8 @@ public class DebugMain {
         score = 95.5; // Watch: score becomes 95.5
 
         // BREAKPOINT: Watch calculations
-        int doubleCounter = counter * 2; // Watch: doubleCounter = 20
-        String fullName = "Mr. " + name; // Watch: fullName = "Mr. John Doe"
+        // Watch: doubleCounter = 20
+        // Watch: fullName = "Mr. John Doe"
 
         System.out.println("Counter: " + counter);
         System.out.println("Name: " + name);

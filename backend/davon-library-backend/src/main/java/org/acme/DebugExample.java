@@ -49,8 +49,7 @@ public class DebugExample {
         }
 
         // BREAKPOINT: Test null handling
-        User nullUser = null;
-        User nullResult = userService.createUser(nullUser); // Watch this return null
+        // Watch this return null
 
         System.out.println("=== Debug Demo Complete ===");
     }
@@ -61,7 +60,6 @@ public class DebugExample {
     public void debugDataTypes() {
         // BREAKPOINT: Watch primitive variables
         int count = 0;
-        boolean isActive = true;
         double score = 95.5;
 
         // BREAKPOINT: Watch object creation and modification
@@ -75,11 +73,10 @@ public class DebugExample {
         }
 
         // BREAKPOINT: Watch conditional logic
-        if (score > 90) {
-            isActive = true; // Watch boolean change
+        if (score > 90) { // Watch boolean change
             System.out.println("High score achieved!");
         } else {
-            isActive = false;
+
             System.out.println("Score needs improvement");
         }
     }
