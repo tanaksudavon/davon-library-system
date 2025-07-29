@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Book, BookCreateInput, BookUpdateInput } from '@/lib/types/book';
+import { Book, BookCreateRequest, BookUpdateRequest, BookStatus } from '@/lib/api/types';
 import { bookService } from '@/lib/services/book-service';
 
 interface BookFormModalProps {
@@ -10,25 +10,25 @@ interface BookFormModalProps {
 }
 
 export default function BookFormModal({ isOpen, onClose, onSuccess, book }: BookFormModalProps) {
-  const [formData, setFormData] = useState<BookCreateInput>({
+  const [formData, setFormData] = useState<BookCreateRequest>({
     title: '',
-    author: '',
+    authorId: 1, // Default to first author
     isbn: '',
-    category: '',
+    categoryId: 1, // Default to first category
     description: '',
     publishDate: '',
-    status: 'available',
+    status: BookStatus.AVAILABLE,
   });
 
   useEffect(() => {
     if (book) {
       setFormData({
         title: book.title,
-        author: book.author,
-        isbn: book.isbn,
-        category: book.category,
-        description: book.description,
-        publishDate: book.publishDate,
+        authorId: typeof book.author === 'object' ? book.author.id : 1,
+        isbn: book.isbn || '',
+        categoryId: typeof book.category === 'object' ? book.category.id : 1,
+        description: book.description || '',
+        publishDate: book.publishDate || '',
         status: book.status,
       });
     }
@@ -38,7 +38,7 @@ export default function BookFormModal({ isOpen, onClose, onSuccess, book }: Book
     e.preventDefault();
     try {
       if (book) {
-        await bookService.updateBook(book.id, formData as BookUpdateInput);
+        await bookService.updateBook(book.id, formData as BookUpdateRequest);
       } else {
         await bookService.createBook(formData);
       }
@@ -51,7 +51,7 @@ export default function BookFormModal({ isOpen, onClose, onSuccess, book }: Book
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData((prev: BookCreateInput) => ({ ...prev, [name]: value }));
+    setFormData((prev: BookCreateRequest) => ({ ...prev, [name]: value }));
   };
 
   if (!isOpen) return null;
@@ -93,7 +93,7 @@ export default function BookFormModal({ isOpen, onClose, onSuccess, book }: Book
               type="text"
               id="author"
               name="author"
-              value={formData.author}
+              value={formData.authorId}
               onChange={handleChange}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
               required
@@ -119,7 +119,7 @@ export default function BookFormModal({ isOpen, onClose, onSuccess, book }: Book
               type="text"
               id="category"
               name="category"
-              value={formData.category}
+              value={formData.categoryId}
               onChange={handleChange}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
               required

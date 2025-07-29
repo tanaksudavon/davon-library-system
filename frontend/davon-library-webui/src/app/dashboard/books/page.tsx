@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { bookService } from '@/lib/services/book-service';
-import { Book } from '@/lib/types/book';
+import { bookService } from '@/lib/api/services/book.service';
+import { Book, BookStatus, UserRole } from '@/lib/api/types';
 import BookFormModal from '@/components/books/BookFormModal';
 import { authService } from '@/lib/services/auth-service';
 import { FiSearch, FiBookOpen } from 'react-icons/fi';
@@ -17,13 +17,16 @@ export default function BooksPage() {
 
   useEffect(() => {
     const currentUser = authService.getCurrentUser();
-    setIsAdmin(currentUser?.role === 'admin');
+    setIsAdmin(currentUser?.role === UserRole.LIBRARIAN);
     loadBooks();
   }, []);
 
-  const loadBooks = () => {
+  const loadBooks = async () => {
+    console.log('Loading books...');
     try {
-      const allBooks = bookService.getAllBooks();
+      console.log('Making API call to:', 'http://localhost:8081/api/books');
+      const allBooks = await bookService.getAllBooks();
+      console.log('Books received:', allBooks);
       setBooks(allBooks);
     } catch (error) {
       console.error('Failed to load books:', error);
@@ -32,9 +35,9 @@ export default function BooksPage() {
     }
   };
 
-  const handleDeleteBook = (id: string) => {
+  const handleDeleteBook = async (id: number) => {
     try {
-      bookService.deleteBook(id);
+      await bookService.deleteBook(id);
       setBooks(books.filter(book => book.id !== id));
     } catch (error) {
       console.error('Failed to delete book:', error);
@@ -54,7 +57,7 @@ export default function BooksPage() {
   // Filter books based on search term
   const filteredBooks = books.filter(book => 
     book.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    book.author.toLowerCase().includes(searchTerm.toLowerCase())
+    `${book.author.firstName} ${book.author.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -98,18 +101,18 @@ export default function BooksPage() {
                     <div className="text-sm font-medium text-gray-900">{book.title}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{book.author}</div>
+                    <div className="text-sm text-gray-900">{`${book.author.firstName} ${book.author.lastName}`}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-500">{book.isbn}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{book.category}</div>
+                    <div className="text-sm text-gray-500">{book.category.name}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                      ${book.status === 'available' ? 'bg-green-100 text-green-800' : 
-                        book.status === 'borrowed' ? 'bg-yellow-100 text-yellow-800' : 
+                      ${book.status === BookStatus.AVAILABLE ? 'bg-green-100 text-green-800' : 
+                        book.status === BookStatus.BORROWED ? 'bg-yellow-100 text-yellow-800' : 
                         'bg-red-100 text-red-800'}`}>
                       {book.status}
                     </span>
@@ -183,27 +186,27 @@ export default function BooksPage() {
               </div>
               <div className="p-4">
                 <h3 className="text-lg font-semibold text-gray-800">{book.title}</h3>
-                <p className="text-sm text-gray-600 mb-2">by {book.author}</p>
-                <p className="text-xs text-gray-500 mb-2">Category: {book.category}</p>
+                <p className="text-sm text-gray-600 mb-2">by {`${book.author.firstName} ${book.author.lastName}`}</p>
+                <p className="text-xs text-gray-500 mb-2">Category: {book.category.name}</p>
                 
                 <div className="flex justify-between items-center">
                   <span className={`text-xs px-2 py-1 rounded-full ${
-                    book.status === 'available' 
+                    book.status === BookStatus.AVAILABLE 
                       ? 'bg-green-100 text-green-800' 
-                      : book.status === 'borrowed'
+                      : book.status === BookStatus.BORROWED
                       ? 'bg-amber-100 text-amber-800'
                       : 'bg-red-100 text-red-800'
                   }`}>
-                    {book.status === 'available' ? 'Available' : 
-                     book.status === 'borrowed' ? 'Borrowed' : 'Maintenance'}
+                    {book.status === BookStatus.AVAILABLE ? 'Available' : 
+                     book.status === BookStatus.BORROWED ? 'Borrowed' : 'Maintenance'}
                   </span>
                 </div>
                 
-                {book.status === 'available' ? (
+                {book.status === BookStatus.AVAILABLE ? (
                   <button className="mt-3 w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none">
                     <FiBookOpen className="mr-2" /> Borrow
                   </button>
-                ) : book.status === 'borrowed' ? (
+                ) : book.status === BookStatus.BORROWED ? (
                   <button className="mt-3 w-full flex justify-center items-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none">
                     Reserve
                   </button>

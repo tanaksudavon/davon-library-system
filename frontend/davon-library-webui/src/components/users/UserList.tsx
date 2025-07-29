@@ -1,24 +1,26 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import UserEditModal from './UserEditModal';
-import { User } from '@/types/user';
-import { userService } from '@/lib/services/user-service';
+// import UserEditModal from './UserEditModal';
+import { User } from '@/lib/api/types';
+import { userService } from '@/lib/api/services/user.service';
 
 export default function UserList() {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  // const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     fetchUsers();
   }, []);
 
-  const fetchUsers = () => {
+  const fetchUsers = async () => {
     try {
-      const allUsers = userService.getAllUsers();
+      console.log('Loading users...');
+      const allUsers = await userService.getAllUsers();
+      console.log('Users received:', allUsers);
       setUsers(allUsers);
       setError(null);
     } catch (err) {
@@ -30,17 +32,18 @@ export default function UserList() {
   };
 
   const handleEdit = (user: User) => {
-    setSelectedUser(user);
-    setIsModalOpen(true);
+    // setSelectedUser(user);
+    // setIsModalOpen(true);
+    console.log('Edit user:', user);
   };
 
-  const handleDelete = (userId: string) => {
+  const handleDelete = async (userId: number) => {
     if (!confirm('Are you sure you want to delete this user?')) {
       return;
     }
 
     try {
-      userService.deleteUser(userId);
+      await userService.deleteUser(userId);
       setUsers(users.filter(user => user.id !== userId));
       setError(null);
     } catch (err) {
@@ -91,20 +94,22 @@ export default function UserList() {
           {users.map((user) => (
             <tr key={user.id}>
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm font-medium text-gray-900">{user.username}</div>
+                <div className="text-sm font-medium text-gray-900">{user.username || 'N/A'}</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="text-sm text-gray-500">{user.email}</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                  user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'
+                  user.role === 'LIBRARIAN' ? 'bg-purple-100 text-purple-800' : 
+                  user.role === 'MEMBER' ? 'bg-green-100 text-green-800' : 
+                  'bg-gray-100 text-gray-800'
                 }`}>
                   {user.role}
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {new Date(user.createdAt).toLocaleDateString()}
+                {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <button
@@ -125,7 +130,7 @@ export default function UserList() {
         </tbody>
       </table>
 
-      {selectedUser && (
+      {/* {selectedUser && (
         <UserEditModal
           user={selectedUser}
           onClose={() => {
@@ -138,7 +143,7 @@ export default function UserList() {
             setSelectedUser(null);
           }}
         />
-      )}
+      )} */}
     </div>
   );
 } 
