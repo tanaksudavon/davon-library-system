@@ -21,8 +21,13 @@ public class Book {
     private String title;
     private String isbn;
     private String description;
+
+    @Column(name = "publish_date")
     private LocalDate publishDate;
+
+    @Column(name = "cover_image")
     private String coverImage;
+
     @Enumerated(EnumType.STRING)
     private BookStatus status;
 
@@ -34,7 +39,10 @@ public class Book {
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
 
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
     // Getters and setters

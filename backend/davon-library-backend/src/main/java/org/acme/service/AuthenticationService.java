@@ -31,7 +31,7 @@ public class AuthenticationService {
     }
 
     public Optional<User> login(String username, String password) {
-        Optional<User> userOptional = userRepository.findByUsername(username);
+        Optional<User> userOptional = userRepository.find("username", username).firstResultOptional();
         if (userOptional.isPresent() && userOptional.get().getPassword().equals(password)) {
             return userOptional;
         }

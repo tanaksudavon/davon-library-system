@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "addresses")
 @Data
@@ -20,11 +22,29 @@ public class Address {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    private String street;
-    private String city;
-    private String state;
-    private String zipCode;
+    @Column(name = "address_type")
     @Enumerated(EnumType.STRING)
-    private AddressType type;
+    private AddressType addressType;
 
+    @Column(name = "street_address")
+    private String streetAddress;
+
+    private String city;
+
+    @Column(name = "state_province")
+    private String stateProvince;
+
+    @Column(name = "postal_code")
+    private String postalCode;
+
+    private String country;
+
+    @Column(name = "is_primary")
+    private Boolean isPrimary;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 }
