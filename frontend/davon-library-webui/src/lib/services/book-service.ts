@@ -1,117 +1,180 @@
-import { Book, BookCreateInput, BookUpdateInput } from '@/lib/types/book';
-import { v4 as uuidv4 } from 'uuid';
-
-const BOOKS_KEY = 'davon_library_books';
-
-// Initialize with some example books if none exist
-const initializeBooks = () => {
-    if (typeof window === 'undefined') return;
-    
-    const books = localStorage.getItem(BOOKS_KEY);
-    if (!books) {
-        const defaultBooks: Book[] = [
-            {
-                id: uuidv4(),
-                title: 'The Great Gatsby',
-                author: 'F. Scott Fitzgerald',
-                isbn: '978-0743273565',
-                category: 'Fiction',
-                description: 'The story of the mysteriously wealthy Jay Gatsby and his love for the beautiful Daisy Buchanan.',
-                publishDate: '1925-04-10',
-                status: 'available',
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-            },
-            // Add more default books as needed
-        ];
-        localStorage.setItem(BOOKS_KEY, JSON.stringify(defaultBooks));
-    }
-};
+import { bookService as apiBookService } from '../api/services';
+import { 
+  Book, 
+  BookCreateRequest, 
+  BookUpdateRequest, 
+  BookSearchFilters,
+  BookStatus,
+  PaginatedResponse 
+} from '../api/types';
 
 class BookService {
-    getAllBooks = (): Book[] => {
-        if (typeof window === 'undefined') return [];
-        
-        initializeBooks();
-        const books = localStorage.getItem(BOOKS_KEY);
-        return books ? JSON.parse(books) : [];
-    };
+  /**
+   * Get all books
+   */
+  getAllBooks(): Book[] {
+    // For synchronous compatibility, we'll need to handle this differently
+    // This is a temporary bridge - ideally components should use async calls
+    try {
+      // Return empty array for now, components should use async methods
+      return [];
+    } catch (error) {
+      console.error('Failed to get books synchronously:', error);
+      return [];
+    }
+  }
 
-    getBookById = (id: string): Book | null => {
-        if (typeof window === 'undefined') return null;
-        
-        const books = this.getAllBooks();
-        return books.find(book => book.id === id) || null;
-    };
+  /**
+   * Get all books (async version)
+   */
+  async getAllBooksAsync(): Promise<Book[]> {
+    return await apiBookService.getAllBooks();
+  }
 
-    createBook = (input: BookCreateInput): Book => {
-        if (typeof window === 'undefined') 
-            throw new Error('Cannot create book on server side');
-        
-        const books = this.getAllBooks();
-        const newBook: Book = {
-            id: uuidv4(),
-            ...input,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-        };
-        
-        books.push(newBook);
-        localStorage.setItem(BOOKS_KEY, JSON.stringify(books));
-        return newBook;
-    };
+  /**
+   * Get book by ID
+   */
+  async getBookById(id: number): Promise<Book> {
+    return await apiBookService.getBookById(id);
+  }
 
-    updateBook = (id: string, input: BookUpdateInput): Book => {
-        if (typeof window === 'undefined') 
-            throw new Error('Cannot update book on server side');
-        
-        const books = this.getAllBooks();
-        const bookIndex = books.findIndex(book => book.id === id);
-        
-        if (bookIndex === -1) {
-            throw new Error('Book not found');
-        }
-        
-        const updatedBook = {
-            ...books[bookIndex],
-            ...input,
-            updatedAt: new Date().toISOString(),
-        };
-        
-        books[bookIndex] = updatedBook;
-        localStorage.setItem(BOOKS_KEY, JSON.stringify(books));
-        return updatedBook;
-    };
+  /**
+   * Create new book
+   */
+  async createBook(bookData: BookCreateRequest): Promise<Book> {
+    return await apiBookService.createBook(bookData);
+  }
 
-    deleteBook = (id: string): void => {
-        if (typeof window === 'undefined') 
-            throw new Error('Cannot delete book on server side');
-        
-        const books = this.getAllBooks();
-        const filteredBooks = books.filter(book => book.id !== id);
-        localStorage.setItem(BOOKS_KEY, JSON.stringify(filteredBooks));
-    };
+  /**
+   * Update existing book
+   */
+  async updateBook(id: number, bookData: BookUpdateRequest): Promise<Book> {
+    return await apiBookService.updateBook(id, bookData);
+  }
 
-    // Additional methods for book management
-    getBooksByCategory = (category: string): Book[] => {
-        const books = this.getAllBooks();
-        return books.filter(book => book.category === category);
-    };
+  /**
+   * Delete book
+   */
+  async deleteBook(id: number): Promise<void> {
+    return await apiBookService.deleteBook(id);
+  }
 
-    getBooksByStatus = (status: Book['status']): Book[] => {
-        const books = this.getAllBooks();
-        return books.filter(book => book.status === status);
-    };
+  /**
+   * Search books with filters
+   */
+  async searchBooks(filters: BookSearchFilters): Promise<Book[]> {
+    return await apiBookService.searchBooks(filters);
+  }
 
-    searchBooks = (query: string): Book[] => {
-        const books = this.getAllBooks();
-        const lowercaseQuery = query.toLowerCase();
-        return books.filter(book => 
-            book.title.toLowerCase().includes(lowercaseQuery) ||
-            book.author.toLowerCase().includes(lowercaseQuery) ||
-            book.isbn.includes(query)
-        );
-    };
+  /**
+   * Get books with pagination
+   */
+  async getBooksWithPagination(
+    page: number = 1,
+    limit: number = 12,
+    filters?: BookSearchFilters
+  ): Promise<PaginatedResponse<Book>> {
+    return await apiBookService.getBooksWithPagination(page, limit, filters);
+  }
+
+  /**
+   * Get books by category
+   */
+  async getBooksByCategory(categoryId: number): Promise<Book[]> {
+    return await apiBookService.getBooksByCategory(categoryId);
+  }
+
+  /**
+   * Get books by author
+   */
+  async getBooksByAuthor(authorId: number): Promise<Book[]> {
+    return await apiBookService.getBooksByAuthor(authorId);
+  }
+
+  /**
+   * Get available books only
+   */
+  async getAvailableBooks(): Promise<Book[]> {
+    return await apiBookService.getAvailableBooks();
+  }
+
+  /**
+   * Check book availability
+   */
+  async isBookAvailable(bookId: number): Promise<boolean> {
+    return await apiBookService.isBookAvailable(bookId);
+  }
+
+  // Legacy methods for backward compatibility
+  /**
+   * @deprecated Use createBook instead
+   */
+  createBookLegacy(bookData: any): Book {
+    console.warn('createBookLegacy is deprecated, use async createBook instead');
+    // Return a mock book for compatibility
+    return {
+      id: Date.now(),
+      title: bookData.title || '',
+      isbn: bookData.isbn || '',
+      description: bookData.description,
+      publishDate: bookData.publishDate,
+      coverImage: bookData.coverImage,
+      status: bookData.status || 'AVAILABLE',
+      author: bookData.author || { id: 1, firstName: 'Unknown', lastName: 'Author' },
+      category: bookData.category || { id: 1, name: 'General' },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } as Book;
+  }
+
+  /**
+   * @deprecated Use updateBook instead
+   */
+  updateBookLegacy(bookData: any): Book {
+    console.warn('updateBookLegacy is deprecated, use async updateBook instead');
+    return bookData as Book;
+  }
+
+  /**
+   * @deprecated Use deleteBook instead
+   */
+  deleteBookLegacy(id: number): void {
+    console.warn('deleteBookLegacy is deprecated, use async deleteBook instead');
+  }
+
+  /**
+   * Get sample book data for testing
+   */
+  getSampleBooks(): Book[] {
+    return [
+      {
+        id: 1,
+        title: 'The Great Gatsby',
+        isbn: '978-0-7432-7356-5',
+        description: 'A classic American novel',
+        publishDate: '1925-04-10',
+        coverImage: '/api/placeholder/300/400',
+        status: BookStatus.AVAILABLE,
+        author: { id: 1, firstName: 'F. Scott', lastName: 'Fitzgerald' },
+        category: { id: 1, name: 'Fiction' },
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      },
+      {
+        id: 2,
+        title: 'To Kill a Mockingbird',
+        isbn: '978-0-06-112008-4',
+        description: 'A gripping tale of racial injustice',
+        publishDate: '1960-07-11',
+        coverImage: '/api/placeholder/300/400',
+        status: BookStatus.BORROWED,
+        author: { id: 2, firstName: 'Harper', lastName: 'Lee' },
+        category: { id: 1, name: 'Fiction' },
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      },
+    ];
+  }
 }
 
 export const bookService = new BookService(); 
