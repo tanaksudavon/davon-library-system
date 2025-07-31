@@ -6,15 +6,16 @@ import { authService } from '@/lib/services/auth-service';
 import { useRouter } from 'next/navigation';
 import { HomeIcon, BookOpenIcon, UsersIcon, UserIcon, BookmarkIcon } from '@heroicons/react/24/outline';
 import { useEffect, useState } from 'react';
+import { UserRole } from '@/lib/api/types';
 
 export default function DashboardSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isLibrarian, setIsLibrarian] = useState(false);
 
   useEffect(() => {
     const currentUser = authService.getCurrentUser();
-    setIsAdmin(currentUser?.role === 'admin');
+    setIsLibrarian(currentUser?.role === UserRole.LIBRARIAN);
   }, []);
 
   const handleLogout = () => {
@@ -22,44 +23,45 @@ export default function DashboardSidebar() {
     router.push('/login');
   };
 
-  // Admin için tüm menüler
-  const adminNavigation = [
+  // All navigation items
+  const allNavigation = [
     {
       name: 'Dashboard',
-      href: '/dashboard',
+      href: '/dashboard/dashboard',
       icon: <HomeIcon className="h-6 w-6" />,
-      adminOnly: true
+      librarianOnly: false
     },
     {
       name: 'Books',
       href: '/dashboard/books',
       icon: <BookOpenIcon className="h-6 w-6" />,
-      adminOnly: false
+      librarianOnly: false
     },
     {
       name: 'Users',
       href: '/dashboard/users',
       icon: <UsersIcon className="h-6 w-6" />,
-      adminOnly: true
+      librarianOnly: true
     },
     {
       name: 'Profile',
       href: '/dashboard/profile',
       icon: <UserIcon className="h-6 w-6" />,
-      adminOnly: false
+      librarianOnly: false
     },
   ];
 
-  // Kullanıcı rolüne göre navigasyon menüsünü filtrele
-  const navigation = isAdmin 
-    ? adminNavigation 
-    : adminNavigation.filter(item => !item.adminOnly);
+  // Filter navigation based on user role
+  const navigation = isLibrarian 
+    ? allNavigation 
+    : allNavigation.filter(item => !item.librarianOnly);
 
   useEffect(() => {
-    // Debug için console'a yazdıralım
+    // Debug logging
     console.log('[DashboardSidebar] Current user:', authService.getCurrentUser());
-    console.log('[DashboardSidebar] Is admin:', isAdmin);
-  }, [isAdmin]);
+    console.log('[DashboardSidebar] Is librarian:', isLibrarian);
+    console.log('[DashboardSidebar] Navigation items:', navigation);
+  }, [isLibrarian, navigation]);
 
   const handleNavClick = (href: string) => {
     console.log('[DashboardSidebar] Navigation clicked:', href);
@@ -75,7 +77,7 @@ export default function DashboardSidebar() {
       <nav className="flex-1 overflow-y-auto">
         <div className="px-2 py-4 space-y-1">
           {navigation.map((item) => {
-            const isActive = pathname.startsWith(item.href);
+            const isActive = pathname === item.href || (item.href === '/dashboard/dashboard' && pathname === '/dashboard');
             return (
               <Link
                 key={item.name}
@@ -103,7 +105,7 @@ export default function DashboardSidebar() {
           className="flex items-center w-full px-4 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-50 hover:text-gray-900"
         >
           <svg className="w-6 h-6 mr-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013 3v1" />
           </svg>
           Logout
         </button>
