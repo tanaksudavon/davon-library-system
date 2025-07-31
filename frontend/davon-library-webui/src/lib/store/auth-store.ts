@@ -1,9 +1,15 @@
 import { create } from 'zustand';
-import { AuthState } from '@/types/auth';
-import { User } from '@/types/user';
+import { User } from '@/lib/api/types';
+
+interface AuthState {
+    user: User | null;
+    token: string | null;
+    setAuth: (user: User, token: string) => void;
+    clearAuth: () => void;
+}
 
 // Helper to safely get user from localStorage
-const getUserFromStorage = (): Omit<User, 'password'> | null => {
+const getUserFromStorage = (): User | null => {
     if (typeof window === 'undefined') return null;
     
     try {
@@ -20,7 +26,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     user: typeof window !== 'undefined' ? getUserFromStorage() : null,
     token: typeof window !== 'undefined' ? localStorage.getItem('token') : null,
     
-    setAuth: (user: Omit<User, 'password'>, token: string) => {
+    setAuth: (user: User, token: string) => {
         if (typeof window !== 'undefined') {
             // Store both token and user object in localStorage
             localStorage.setItem('token', token);

@@ -5,7 +5,8 @@ import {
   BookCreateRequest, 
   BookUpdateRequest, 
   BookSearchFilters,
-  PaginatedResponse 
+  PaginatedResponse,
+  Loan
 } from '../types';
 
 export class BookService {
@@ -277,6 +278,51 @@ export class BookService {
     } catch (error) {
       console.error(`Failed to check availability for book ${bookId}:`, error);
       return false;
+    }
+  }
+
+  /**
+   * Borrow a book
+   */
+  async borrowBook(bookId: number, userId: number): Promise<Loan> {
+    try {
+      return await httpClient.post<Loan>(
+        `${API_CONFIG.ENDPOINTS.BOOKS.BY_ID(bookId)}/borrow?userId=${userId}`,
+        {}
+      );
+    } catch (error) {
+      console.error(`Failed to borrow book ${bookId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Return a book
+   */
+  async returnBook(bookId: number): Promise<Loan> {
+    try {
+      return await httpClient.put<Loan>(
+        `${API_CONFIG.ENDPOINTS.BOOKS.BY_ID(bookId)}/return`,
+        {}
+      );
+    } catch (error) {
+      console.error(`Failed to return book ${bookId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reserve a book
+   */
+  async reserveBook(bookId: number, userId: number): Promise<any> {
+    try {
+      return await httpClient.post<any>(
+        `${API_CONFIG.ENDPOINTS.BOOKS.BY_ID(bookId)}/reserve?userId=${userId}`,
+        {}
+      );
+    } catch (error) {
+      console.error(`Failed to reserve book ${bookId}:`, error);
+      throw error;
     }
   }
 }

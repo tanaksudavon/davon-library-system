@@ -29,6 +29,13 @@ class AuthService {
     }
 
     /**
+     * Clear all authentication data (for debugging)
+     */
+    clearAllAuthData(): void {
+        apiAuthService.clearAllAuthData();
+    }
+
+    /**
      * Get current user from storage
      */
     getCurrentUser(): User | null {

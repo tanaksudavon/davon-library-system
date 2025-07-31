@@ -43,11 +43,14 @@ export const API_CONFIG = {
     FINES: {
       BASE: '/api/fines',
       BY_ID: (id: number) => `/api/fines/${id}`,
-      BY_USER: (userId: number) => `/api/fines/user/${userId}`,
+      USER_FINES: (userId: number) => `/api/fines/user/${userId}`,
+      USER_TOTAL: (userId: number) => `/api/fines/user/${userId}/total`,
+      PAY: (fineId: number) => `/api/fines/${fineId}/pay`,
     },
     // Search
     SEARCH: {
       BOOKS: '/api/search/books',
+      USERS: '/api/search/users',
       AUTHORS: '/api/search/authors',
       GLOBAL: '/api/search',
     },

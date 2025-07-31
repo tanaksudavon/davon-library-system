@@ -8,10 +8,21 @@ export class AuthService {
    */
   async login(credentials: LoginRequest): Promise<User> {
     try {
+      console.log('Attempting login for username:', credentials.username);
+      
       const response = await httpClient.post<User>(
         API_CONFIG.ENDPOINTS.AUTH.LOGIN,
         credentials
       );
+
+      console.log('Login response received:', {
+        id: response.id,
+        username: response.username,
+        firstName: response.firstName,
+        lastName: response.lastName,
+        email: response.email,
+        role: response.role
+      });
 
       // Store user data in localStorage
       if (typeof window !== 'undefined') {
@@ -20,6 +31,12 @@ export class AuthService {
         const token = btoa(`${credentials.username}:${Date.now()}`);
         localStorage.setItem('token', token);
         httpClient.setAuthToken(token);
+        console.log('User data stored in localStorage');
+
+        // Update Zustand store to trigger component updates
+        const { useAuthStore } = await import('../../store/auth-store');
+        useAuthStore.getState().setAuth(response, token);
+        console.log('Auth store updated');
       }
 
       return response;
@@ -53,6 +70,26 @@ export class AuthService {
   }
 
   /**
+   * Clear all authentication data (for debugging)
+   */
+  clearAllAuthData(): void {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      localStorage.removeItem('login_success');
+      localStorage.removeItem('redirecting_to_login');
+      // Clear any other auth-related data
+      Object.keys(localStorage).forEach(key => {
+        if (key.includes('auth') || key.includes('user') || key.includes('login')) {
+          localStorage.removeItem(key);
+        }
+      });
+    }
+    httpClient.clearAuthToken();
+    console.log('All authentication data cleared');
+  }
+
+  /**
    * Logout user and clear stored data
    */
   logout(): void {
@@ -61,6 +98,11 @@ export class AuthService {
       localStorage.removeItem('token');
       localStorage.removeItem('login_success');
       localStorage.removeItem('redirecting_to_login');
+
+      // Update Zustand store to trigger component updates
+      const { useAuthStore } = require('../../store/auth-store');
+      useAuthStore.getState().clearAuth();
+      console.log('Auth store cleared');
     }
     httpClient.clearAuthToken();
   }
