@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authService } from '@/lib/services/auth-service';
+import { UserRole } from '@/lib/api/types';
 
 interface AdminRouteProps {
   children: React.ReactNode;
@@ -25,13 +26,13 @@ export default function AdminRoute({ children }: AdminRouteProps) {
           throw new Error('Not authenticated');
         }
 
-        if (currentUser.role !== 'admin') {
-          console.log('[AdminRoute] User not admin, redirecting to profile');
-          router.push('/profile');
+        if (currentUser.role !== UserRole.LIBRARIAN) {
+          console.log('[AdminRoute] User not librarian, redirecting to dashboard');
+          router.push('/dashboard/dashboard');
           return;
         }
 
-        console.log('[AdminRoute] User is admin');
+        console.log('[AdminRoute] User is librarian');
         setIsLoading(false);
       } catch (error) {
         console.error('[AdminRoute] Auth error:', error);

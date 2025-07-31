@@ -2,26 +2,28 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/lib/store/auth-store';
+import { authService } from '@/lib/services/auth-service';
+import { UserRole } from '@/lib/api/types';
 
 export default function HomePage() {
     const router = useRouter();
-    const { user } = useAuthStore();
 
     useEffect(() => {
         // Check if user is logged in
+        const user = authService.getCurrentUser();
+        
         if (user) {
             // Redirect based on user role
-            if (user.role === 'admin') {
+            if (user.role === UserRole.LIBRARIAN) {
                 router.push('/dashboard');
             } else {
-                router.push('/dashboard/profile');
+                router.push('/dashboard');
             }
         } else {
             // Redirect to login if not logged in
             router.push('/login');
         }
-    }, [user, router]);
+    }, [router]);
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">

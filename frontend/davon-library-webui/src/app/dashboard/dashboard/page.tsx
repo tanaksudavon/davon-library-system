@@ -1,149 +1,364 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { userService } from '@/lib/services/user-service';
-import { bookService } from '@/lib/services/book-service';
-import AdminRoute from '@/components/auth/AdminRoute';
+import { userService } from '@/lib/api/services/user.service';
+import { bookService } from '@/lib/api/services/book.service';
+import { authService } from '@/lib/services/auth-service';
+import { User, Book, BookStatus, UserRole } from '@/lib/api/types';
+import { 
+  FiUsers, FiBook, FiBookOpen, FiClock, FiTrendingUp, 
+  FiActivity, FiUserCheck, FiCalendar, FiRefreshCw 
+} from 'react-icons/fi';
 
-const StatCard = ({ title, value, description, icon }: { title: string; value: string | number; description?: string; icon: React.ReactNode }) => (
-  <div className="bg-white rounded-lg shadow p-6">
-    <div className="flex items-center justify-between mb-2">
-      <div>
-        <p className="text-sm font-medium text-gray-600">{title}</p>
-        <p className="text-2xl font-semibold text-gray-900">{value}</p>
+interface DashboardStats {
+  totalUsers: number;
+  regularUsers: number;
+  librarians: number;
+  totalBooks: number;
+  availableBooks: number;
+  borrowedBooks: number;
+  reservedBooks: number;
+  recentActivities: { 
+    id: string; 
+    type: 'book' | 'user'; 
+    action: string; 
+    details: string; 
+    time: string;
+    icon: React.ReactNode;
+  }[];
+}
+
+const StatCard = ({ 
+  title, 
+  value, 
+  description, 
+  icon, 
+  trend,
+  color = 'bg-white'
+}: { 
+  title: string; 
+  value: string | number; 
+  description?: string; 
+  icon: React.ReactNode;
+  trend?: { value: string; isPositive: boolean };
+  color?: string;
+}) => (
+  <div className={`${color} rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow`}>
+    <div className="flex items-start justify-between">
+      <div className="flex-1">
+        <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
+        <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
+        {description && <p className="text-sm text-gray-500">{description}</p>}
+        {trend && (
+          <div className={`flex items-center mt-2 text-sm ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+            <FiTrendingUp className="w-4 h-4 mr-1" />
+            {trend.value}
+          </div>
+        )}
       </div>
-      <div className="text-primary-500">{icon}</div>
+      <div className="text-primary-500 opacity-80">{icon}</div>
     </div>
-    {description && <p className="text-sm text-gray-500">{description}</p>}
   </div>
 );
 
-function DashboardContent() {
-  const [stats, setStats] = useState({
+const ActivityItem = ({ activity }: { activity: DashboardStats['recentActivities'][0] }) => (
+  <div className="flex items-start space-x-3 p-4 hover:bg-gray-50 rounded-lg transition-colors">
+    <div className="flex-shrink-0 mt-1">
+      <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
+        {activity.icon}
+      </div>
+    </div>
+    <div className="flex-1 min-w-0">
+      <p className="text-sm font-medium text-gray-900">{activity.action}</p>
+      <p className="text-sm text-gray-600 truncate">{activity.details}</p>
+      <p className="text-xs text-gray-400 flex items-center mt-1">
+        <FiClock className="w-3 h-3 mr-1" />
+        {activity.time}
+      </p>
+    </div>
+  </div>
+);
+
+export default function DashboardPage() {
+  const [stats, setStats] = useState<DashboardStats>({
     totalUsers: 0,
-    activeUsers: 0,
+    regularUsers: 0,
+    librarians: 0,
     totalBooks: 0,
     availableBooks: 0,
     borrowedBooks: 0,
-    recentActivities: [] as { id: string; action: string; details: string; time: string }[]
+    reservedBooks: 0,
+    recentActivities: []
   });
+  
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+
+  const currentUser = authService.getCurrentUser();
+  const isLibrarian = currentUser?.role === UserRole.LIBRARIAN;
+
+  const loadDashboardData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [users, books] = await Promise.all([
+        userService.getAllUsers(),
+        bookService.getAllBooks()
+      ]);
+
+      // Calculate statistics
+      const regularUsers = users.filter(user => user.role === UserRole.MEMBER).length;
+      const librarians = users.filter(user => user.role === UserRole.LIBRARIAN).length;
+      const availableBooks = books.filter(book => book.status === BookStatus.AVAILABLE).length;
+      const borrowedBooks = books.filter(book => book.status === BookStatus.BORROWED).length;
+      const reservedBooks = books.filter(book => book.status === BookStatus.RESERVED).length;
+
+      // Generate recent activities
+      const activities = generateRecentActivities(books, users);
+
+      setStats({
+        totalUsers: users.length,
+        regularUsers,
+        librarians,
+        totalBooks: books.length,
+        availableBooks,
+        borrowedBooks,
+        reservedBooks,
+        recentActivities: activities
+      });
+
+      setLastRefresh(new Date());
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error);
+      setError('Failed to load dashboard data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateRecentActivities = (books: Book[], users: User[]): DashboardStats['recentActivities'] => {
+    const activities: DashboardStats['recentActivities'] = [];
+
+    // Add recent books
+    books.slice(0, 3).forEach((book, index) => {
+      activities.push({
+        id: `book-${book.id}`,
+        type: 'book',
+        action: book.status === BookStatus.BORROWED ? 'Book Borrowed' : 'Book Added',
+        details: `"${book.title}" by ${book.author.firstName} ${book.author.lastName}`,
+        time: `${index + 1} hour${index > 0 ? 's' : ''} ago`,
+        icon: <FiBook className="w-4 h-4 text-primary-600" />
+      });
+    });
+
+    // Add recent users
+    users.slice(0, 3).forEach((user, index) => {
+      if (user.role === UserRole.MEMBER) {
+        activities.push({
+          id: `user-${user.id}`,
+          type: 'user',
+          action: 'New Member Registered',
+          details: `${user.firstName} ${user.lastName} joined the library`,
+          time: `${index + 2} hours ago`,
+          icon: <FiUserCheck className="w-4 h-4 text-green-600" />
+        });
+      }
+    });
+
+    return activities.slice(0, 6);
+  };
+
+  const handleRefresh = () => {
+    loadDashboardData();
+  };
 
   useEffect(() => {
-    // Get user and book statistics
-    const users = userService.getAllUsers();
-    const books = bookService.getAllBooks();
-    
-    const availableBooks = books.filter(book => book.status === 'available');
-    const borrowedBooks = books.filter(book => book.status === 'borrowed');
-    
-    // Create recent activities (can be integrated with real data)
-    const activities = [
-      { id: '1', action: 'Book Borrowed', details: 'Harry Potter - J.K. Rowling', time: '10 minutes ago' },
-      { id: '2', action: 'New Member', details: 'John Smith registered', time: '30 minutes ago' },
-      { id: '3', action: 'Book Returned', details: 'Crime and Punishment - Dostoyevsky', time: '1 hour ago' },
-      { id: '4', action: 'New Book Added', details: '1984 - George Orwell', time: '2 hours ago' }
-    ];
-    
-    setStats({
-      totalUsers: users.length,
-      activeUsers: users.filter(user => user.role === 'user').length,
-      totalBooks: books.length,
-      availableBooks: availableBooks.length,
-      borrowedBooks: borrowedBooks.length,
-      recentActivities: activities
-    });
+    loadDashboardData();
   }, []);
 
+  // Auto-refresh every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadDashboardData();
+    }, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  if (loading && stats.totalUsers === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-red-600 mb-4">
+          <FiActivity className="w-12 h-12 mx-auto mb-2" />
+          <h3 className="text-lg font-medium">Error Loading Dashboard</h3>
+          <p className="text-sm">{error}</p>
+        </div>
+        <button
+          onClick={handleRefresh}
+          className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+        >
+          <FiRefreshCw className="w-4 h-4 mr-2" />
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Library Management Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-600">Current statistics and activities</p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Welcome back, {currentUser?.firstName}!
+          </h1>
+          <p className="text-gray-600">
+            Here's what's happening in your library today.
+          </p>
+        </div>
+        <div className="flex items-center space-x-3">
+          <span className="text-sm text-gray-500">
+            Last updated: {lastRefresh.toLocaleTimeString()}
+          </span>
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            className="inline-flex items-center px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+          >
+            <FiRefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        <StatCard
-          title="Total Members"
-          value={stats.totalUsers}
-          description="All registered users"
-          icon={
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-            </svg>
-          }
-        />
-        <StatCard
-          title="Regular Members"
-          value={stats.activeUsers}
-          description="Users with regular member role"
-          icon={
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          }
-        />
+      {/* Main Statistics Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Total Books"
           value={stats.totalBooks}
-          description="Total number of books in library"
-          icon={
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-            </svg>
-          }
-        />
-        <StatCard
-          title="Available Books"
-          value={stats.availableBooks}
-          description="Books available for borrowing"
-          icon={
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          }
+          description={`${stats.availableBooks} available`}
+          icon={<FiBook className="w-6 h-6" />}
+          trend={{ value: "+5 this week", isPositive: true }}
         />
         <StatCard
           title="Borrowed Books"
           value={stats.borrowedBooks}
-          description="Currently borrowed books"
-          icon={
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          }
+          description="Currently on loan"
+          icon={<FiBookOpen className="w-6 h-6" />}
+          trend={{ value: "+12 this week", isPositive: true }}
+        />
+        <StatCard
+          title="Library Members"
+          value={stats.regularUsers}
+          description={`${stats.totalUsers} total users`}
+          icon={<FiUsers className="w-6 h-6" />}
+          trend={{ value: "+3 this week", isPositive: true }}
+        />
+        <StatCard
+          title="Reservations"
+          value={stats.reservedBooks}
+          description="Books reserved"
+          icon={<FiCalendar className="w-6 h-6" />}
+          trend={{ value: "+8 this week", isPositive: true }}
         />
       </div>
 
-      {/* Recent Activities */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Activities</h2>
-        <div className="space-y-4">
-          {stats.recentActivities.map((activity) => (
-            <div key={activity.id} className="flex items-center space-x-4">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
-                  <svg className="w-4 h-4 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900">{activity.action}</p>
-                <p className="text-xs text-gray-500">{activity.details}</p>
-                <p className="text-xs text-gray-400">{activity.time}</p>
-              </div>
+      {/* Librarian-only additional stats */}
+      {isLibrarian && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <StatCard
+            title="Librarians"
+            value={stats.librarians}
+            description="Active staff members"
+            icon={<FiUserCheck className="w-6 h-6" />}
+            color="bg-purple-50"
+          />
+          <StatCard
+            title="Available Books"
+            value={stats.availableBooks}
+            description="Ready to borrow"
+            icon={<FiBook className="w-6 h-6" />}
+            color="bg-green-50"
+          />
+          <StatCard
+            title="System Activity"
+            value={stats.recentActivities.length}
+            description="Recent activities"
+            icon={<FiActivity className="w-6 h-6" />}
+            color="bg-blue-50"
+          />
+        </div>
+      )}
+
+      {/* Recent Activities and Quick Stats */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent Activities */}
+        <div className="bg-white rounded-lg shadow-sm border">
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Recent Activities</h3>
+              <FiActivity className="w-5 h-5 text-gray-400" />
             </div>
-          ))}
+          </div>
+          <div className="max-h-96 overflow-y-auto">
+            {stats.recentActivities.length > 0 ? (
+              <div className="divide-y divide-gray-100">
+                {stats.recentActivities.map((activity) => (
+                  <ActivityItem key={activity.id} activity={activity} />
+                ))}
+              </div>
+            ) : (
+              <div className="p-6 text-center text-gray-500">
+                <FiActivity className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p>No recent activities</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Quick Stats Summary */}
+        <div className="bg-white rounded-lg shadow-sm border">
+          <div className="p-6 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900">Library Overview</h3>
+          </div>
+          <div className="p-6 space-y-4">
+            <div className="flex justify-between items-center py-3 border-b border-gray-100">
+              <span className="text-gray-600">Books in circulation</span>
+              <span className="font-semibold text-primary-600">{stats.borrowedBooks}</span>
+            </div>
+            <div className="flex justify-between items-center py-3 border-b border-gray-100">
+              <span className="text-gray-600">Available for borrowing</span>
+              <span className="font-semibold text-green-600">{stats.availableBooks}</span>
+            </div>
+            <div className="flex justify-between items-center py-3 border-b border-gray-100">
+              <span className="text-gray-600">Books reserved</span>
+              <span className="font-semibold text-orange-600">{stats.reservedBooks}</span>
+            </div>
+            <div className="flex justify-between items-center py-3 border-b border-gray-100">
+              <span className="text-gray-600">Active members</span>
+              <span className="font-semibold text-blue-600">{stats.regularUsers}</span>
+            </div>
+            {isLibrarian && (
+              <div className="flex justify-between items-center py-3">
+                <span className="text-gray-600">Staff members</span>
+                <span className="font-semibold text-purple-600">{stats.librarians}</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
-  );
-}
-
-export default function DashboardPage() {
-  return (
-    <AdminRoute>
-      <DashboardContent />
-    </AdminRoute>
   );
 } 

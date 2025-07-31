@@ -83,15 +83,6 @@ export default function EnhancedBooksPage() {
     }
   };
 
-  const handleBorrowBook = async (book: Book) => {
-    try {
-      await borrowBook(book);
-    } catch (error) {
-      console.error('Failed to borrow book:', error);
-      alert(error instanceof Error ? error.message : 'Failed to borrow book');
-    }
-  };
-
   const handleReturnBook = async (book: Book) => {
     try {
       await returnBook(book);
@@ -227,7 +218,6 @@ export default function EnhancedBooksPage() {
                   isAdmin={isAdmin}
                   onEdit={handleEditBook}
                   onDelete={handleDeleteBook}
-                  onBorrow={handleBorrowBook}
                   onReturn={handleReturnBook}
                 />
               </div>
@@ -295,7 +285,6 @@ export default function EnhancedBooksPage() {
             isAdmin={isAdmin}
             onEdit={handleEditBook}
             onDelete={handleDeleteBook}
-            onBorrow={handleBorrowBook}
             onReturn={handleReturnBook}
             onClose={() => {
               setShowBookDetails(false);
