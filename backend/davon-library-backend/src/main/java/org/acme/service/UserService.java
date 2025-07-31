@@ -34,7 +34,14 @@ public class UserService {
         return user;
     }
 
+    @Transactional
     public void deleteUser(Long id) {
+        System.out.println("DEBUG: UserService.deleteUser() called with ID: " + id);
+        if (id == null) {
+            System.out.println("DEBUG: ID is null, attempting to delete anyway");
+        }
+
         userRepository.deleteById(id);
+        System.out.println("DEBUG: User delete operation completed for ID: " + id);
     }
 }

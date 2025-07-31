@@ -3,6 +3,7 @@ package org.acme.service;
 import org.acme.model.Fine;
 import org.acme.model.FineStatus;
 import org.acme.model.Loan;
+import org.acme.model.Book;
 import org.acme.repository.FineRepository;
 import org.acme.repository.LoanRepository;
 
@@ -116,6 +117,30 @@ public class FineCalculationService {
         Objects.requireNonNull(fineId, "Fine ID cannot be null");
         Fine fine = fineRepository.findByIdOptional(fineId)
                 .orElseThrow(() -> new NotFoundException("Fine not found with ID: " + fineId));
+
+        // Eagerly load related entities to prevent LazyInitializationException
+        if (fine.getLoan() != null) {
+            Loan loan = fine.getLoan();
+            // Force loading of loan's related entities
+            if (loan.getBook() != null) {
+                Book book = loan.getBook();
+                if (book.getAuthor() != null) {
+                    book.getAuthor().getFirstName();
+                    book.getAuthor().getLastName();
+                }
+                if (book.getCategory() != null) {
+                    book.getCategory().getName();
+                }
+            }
+            if (loan.getUser() != null) {
+                loan.getUser().getFirstName();
+                loan.getUser().getLastName();
+            }
+        }
+        if (fine.getUser() != null) {
+            fine.getUser().getFirstName();
+            fine.getUser().getLastName();
+        }
 
         fine.setStatus(FineStatus.PAID);
         fine.setPaidDate(LocalDate.now());
