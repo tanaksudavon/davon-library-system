@@ -7,7 +7,6 @@ import org.acme.model.BookStatus;
 import org.acme.repository.LoanRepository;
 import org.acme.repository.BookRepository;
 import org.acme.repository.UserRepository;
-import org.acme.service.FineCalculationService;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
