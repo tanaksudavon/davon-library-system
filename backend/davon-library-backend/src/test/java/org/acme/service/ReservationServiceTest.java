@@ -1,20 +1,21 @@
 package org.acme.service;
 
+import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import org.acme.model.*;
 import org.acme.repository.BookRepository;
+import org.acme.repository.LoanRepository;
 import org.acme.repository.ReservationRepository;
 import org.acme.repository.UserRepository;
-import org.acme.repository.LoanRepository;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.NotFoundException;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -461,11 +462,11 @@ class ReservationServiceTest {
         Long userId = 1L;
         List<Reservation> userReservations = Arrays.asList(testReservation1);
 
+        @SuppressWarnings("unchecked")
+        PanacheQuery<Reservation> query = mock(PanacheQuery.class);
+        when(query.list()).thenReturn(userReservations);
         when(reservationRepository.find(eq("user.id = ?1 and status = ?2"), eq(userId), eq(ReservationStatus.ACTIVE)))
-                .thenReturn(mock(io.quarkus.hibernate.orm.panache.PanacheQuery.class));
-        when(reservationRepository.find(eq("user.id = ?1 and status = ?2"), eq(userId), eq(ReservationStatus.ACTIVE))
-                .list())
-                .thenReturn(userReservations);
+                .thenReturn(query);
 
         // When
         List<Reservation> result = reservationService.getUserActiveReservations(userId);
@@ -489,11 +490,11 @@ class ReservationServiceTest {
         // Given
         Long userId = 2L;
 
+        @SuppressWarnings("unchecked")
+        PanacheQuery<Reservation> query = mock(PanacheQuery.class);
+        when(query.list()).thenReturn(Collections.emptyList());
         when(reservationRepository.find(eq("user.id = ?1 and status = ?2"), eq(userId), eq(ReservationStatus.ACTIVE)))
-                .thenReturn(mock(io.quarkus.hibernate.orm.panache.PanacheQuery.class));
-        when(reservationRepository.find(eq("user.id = ?1 and status = ?2"), eq(userId), eq(ReservationStatus.ACTIVE))
-                .list())
-                .thenReturn(Collections.emptyList());
+                .thenReturn(query);
 
         // When
         List<Reservation> result = reservationService.getUserActiveReservations(userId);
@@ -520,12 +521,12 @@ class ReservationServiceTest {
 
         List<Reservation> expiredReservations = Arrays.asList(expiredReservation);
 
+        @SuppressWarnings("unchecked")
+        PanacheQuery<Reservation> query = mock(PanacheQuery.class);
+        when(query.list()).thenReturn(expiredReservations);
         when(reservationRepository.find(eq("status = ?1 and expirationDate < ?2"),
                 eq(ReservationStatus.ACTIVE), any(LocalDate.class)))
-                .thenReturn(mock(io.quarkus.hibernate.orm.panache.PanacheQuery.class));
-        when(reservationRepository.find(eq("status = ?1 and expirationDate < ?2"),
-                eq(ReservationStatus.ACTIVE), any(LocalDate.class)).list())
-                .thenReturn(expiredReservations);
+                .thenReturn(query);
 
         // When
         reservationService.expireOldReservations();
@@ -550,10 +551,11 @@ class ReservationServiceTest {
         Long bookId = 1L;
         List<Reservation> bookReservations = Arrays.asList(testReservation1, testReservation2);
 
+        @SuppressWarnings("unchecked")
+        PanacheQuery<Reservation> query = mock(PanacheQuery.class);
+        when(query.list()).thenReturn(bookReservations);
         when(reservationRepository.find(eq("book.id"), eq(bookId)))
-                .thenReturn(mock(io.quarkus.hibernate.orm.panache.PanacheQuery.class));
-        when(reservationRepository.find(eq("book.id"), eq(bookId)).list())
-                .thenReturn(bookReservations);
+                .thenReturn(query);
 
         // When
         List<Reservation> result = reservationService.getBookReservationQueue(bookId);

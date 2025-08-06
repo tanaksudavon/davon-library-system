@@ -1,11 +1,12 @@
 package org.acme.service;
 
-import org.acme.model.User;
+import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import org.acme.model.Member;
+import org.acme.model.User;
 import org.acme.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -14,7 +15,8 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 /**
@@ -127,9 +129,10 @@ class AuthenticationServiceTest {
         System.out.println("DEBUG: Testing login - Success scenario");
 
         // Given
-        when(userRepository.find("username", "testuser"))
-                .thenReturn(mock(io.quarkus.hibernate.orm.panache.PanacheQuery.class));
-        when(userRepository.find("username", "testuser").firstResultOptional()).thenReturn(Optional.of(testUser));
+        @SuppressWarnings("unchecked")
+        PanacheQuery<User> query = mock(PanacheQuery.class);
+        when(query.firstResultOptional()).thenReturn(Optional.of(testUser));
+        when(userRepository.find("username", "testuser")).thenReturn(query);
 
         // When
         Optional<User> result = authenticationService.login("testuser", "testpass");
@@ -149,9 +152,10 @@ class AuthenticationServiceTest {
         System.out.println("DEBUG: Testing login - Wrong password scenario");
 
         // Given
-        when(userRepository.find("username", "testuser"))
-                .thenReturn(mock(io.quarkus.hibernate.orm.panache.PanacheQuery.class));
-        when(userRepository.find("username", "testuser").firstResultOptional()).thenReturn(Optional.of(testUser));
+        @SuppressWarnings("unchecked")
+        PanacheQuery<User> query = mock(PanacheQuery.class);
+        when(query.firstResultOptional()).thenReturn(Optional.of(testUser));
+        when(userRepository.find("username", "testuser")).thenReturn(query);
 
         // When
         Optional<User> result = authenticationService.login("testuser", "wrongpass");
@@ -169,9 +173,10 @@ class AuthenticationServiceTest {
         System.out.println("DEBUG: Testing login - User not found scenario");
 
         // Given
-        when(userRepository.find("username", "nonexistent"))
-                .thenReturn(mock(io.quarkus.hibernate.orm.panache.PanacheQuery.class));
-        when(userRepository.find("username", "nonexistent").firstResultOptional()).thenReturn(Optional.empty());
+        @SuppressWarnings("unchecked")
+        PanacheQuery<User> query = mock(PanacheQuery.class);
+        when(query.firstResultOptional()).thenReturn(Optional.empty());
+        when(userRepository.find("username", "nonexistent")).thenReturn(query);
 
         // When
         Optional<User> result = authenticationService.login("nonexistent", "anypass");
@@ -205,9 +210,10 @@ class AuthenticationServiceTest {
         System.out.println("DEBUG: Testing login - Null password scenario");
 
         // Given
-        when(userRepository.find("username", "testuser"))
-                .thenReturn(mock(io.quarkus.hibernate.orm.panache.PanacheQuery.class));
-        when(userRepository.find("username", "testuser").firstResultOptional()).thenReturn(Optional.of(testUser));
+        @SuppressWarnings("unchecked")
+        PanacheQuery<User> query = mock(PanacheQuery.class);
+        when(query.firstResultOptional()).thenReturn(Optional.of(testUser));
+        when(userRepository.find("username", "testuser")).thenReturn(query);
 
         // When
         Optional<User> result = authenticationService.login("testuser", null);
@@ -225,8 +231,10 @@ class AuthenticationServiceTest {
         System.out.println("DEBUG: Testing login - Empty credentials scenario");
 
         // Given
-        when(userRepository.find("username", "")).thenReturn(mock(io.quarkus.hibernate.orm.panache.PanacheQuery.class));
-        when(userRepository.find("username", "").firstResultOptional()).thenReturn(Optional.empty());
+        @SuppressWarnings("unchecked")
+        PanacheQuery<User> query = mock(PanacheQuery.class);
+        when(query.firstResultOptional()).thenReturn(Optional.empty());
+        when(userRepository.find("username", "")).thenReturn(query);
 
         // When
         Optional<User> result = authenticationService.login("", "");
@@ -294,13 +302,15 @@ class AuthenticationServiceTest {
         lowerCaseUser.setUsername("testuser");
         lowerCaseUser.setPassword("testpass");
 
-        when(userRepository.find("username", "testuser"))
-                .thenReturn(mock(io.quarkus.hibernate.orm.panache.PanacheQuery.class));
-        when(userRepository.find("username", "testuser").firstResultOptional()).thenReturn(Optional.of(lowerCaseUser));
+        @SuppressWarnings("unchecked")
+        PanacheQuery<User> successQuery = mock(PanacheQuery.class);
+        when(successQuery.firstResultOptional()).thenReturn(Optional.of(lowerCaseUser));
+        when(userRepository.find("username", "testuser")).thenReturn(successQuery);
 
-        when(userRepository.find("username", "TestUser"))
-                .thenReturn(mock(io.quarkus.hibernate.orm.panache.PanacheQuery.class));
-        when(userRepository.find("username", "TestUser").firstResultOptional()).thenReturn(Optional.empty());
+        @SuppressWarnings("unchecked")
+        PanacheQuery<User> failQuery = mock(PanacheQuery.class);
+        when(failQuery.firstResultOptional()).thenReturn(Optional.empty());
+        when(userRepository.find("username", "TestUser")).thenReturn(failQuery);
 
         // When - try login with different case
         Optional<User> successResult = authenticationService.login("testuser", "testpass");

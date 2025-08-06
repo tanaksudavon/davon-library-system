@@ -1,10 +1,11 @@
 package org.acme.service;
 
+import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import org.acme.model.Author;
 import org.acme.repository.AuthorRepository;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -321,10 +322,11 @@ class AuthorServiceTest {
         String searchName = "John";
         List<Author> expectedResults = Arrays.asList(testAuthor1, testAuthor3); // John Doe and Michael Johnson
 
+        @SuppressWarnings("unchecked")
+        PanacheQuery<Author> query = mock(PanacheQuery.class);
+        when(query.list()).thenReturn(expectedResults);
         when(authorRepository.find(eq("LOWER(firstName) LIKE ?1 OR LOWER(lastName) LIKE ?1"), eq("%john%")))
-                .thenReturn(mock(io.quarkus.hibernate.orm.panache.PanacheQuery.class));
-        when(authorRepository.find(eq("LOWER(firstName) LIKE ?1 OR LOWER(lastName) LIKE ?1"), eq("%john%")).list())
-                .thenReturn(expectedResults);
+                .thenReturn(query);
 
         // When
         List<Author> result = authorService.searchAuthorsByName(searchName);
@@ -390,11 +392,12 @@ class AuthorServiceTest {
 
         // Given
         String searchName = "NonExistent";
+
+        @SuppressWarnings("unchecked")
+        PanacheQuery<Author> query = mock(PanacheQuery.class);
+        when(query.list()).thenReturn(Collections.emptyList());
         when(authorRepository.find(eq("LOWER(firstName) LIKE ?1 OR LOWER(lastName) LIKE ?1"), eq("%nonexistent%")))
-                .thenReturn(mock(io.quarkus.hibernate.orm.panache.PanacheQuery.class));
-        when(authorRepository.find(eq("LOWER(firstName) LIKE ?1 OR LOWER(lastName) LIKE ?1"), eq("%nonexistent%"))
-                .list())
-                .thenReturn(Collections.emptyList());
+                .thenReturn(query);
 
         // When
         List<Author> result = authorService.searchAuthorsByName(searchName);
@@ -418,10 +421,11 @@ class AuthorServiceTest {
         String searchName = "JANE";
         List<Author> expectedResults = Arrays.asList(testAuthor2);
 
+        @SuppressWarnings("unchecked")
+        PanacheQuery<Author> query = mock(PanacheQuery.class);
+        when(query.list()).thenReturn(expectedResults);
         when(authorRepository.find(eq("LOWER(firstName) LIKE ?1 OR LOWER(lastName) LIKE ?1"), eq("%jane%")))
-                .thenReturn(mock(io.quarkus.hibernate.orm.panache.PanacheQuery.class));
-        when(authorRepository.find(eq("LOWER(firstName) LIKE ?1 OR LOWER(lastName) LIKE ?1"), eq("%jane%")).list())
-                .thenReturn(expectedResults);
+                .thenReturn(query);
 
         // When
         List<Author> result = authorService.searchAuthorsByName(searchName);
