@@ -13,12 +13,8 @@ export default function HomePage() {
         const user = authService.getCurrentUser();
         
         if (user) {
-            // Redirect based on user role
-            if (user.role === UserRole.LIBRARIAN) {
-                router.push('/dashboard');
-            } else {
-                router.push('/dashboard');
-            }
+            // Send all authenticated users to dashboard
+            router.push('/dashboard');
         } else {
             // Redirect to login if not logged in
             router.push('/login');

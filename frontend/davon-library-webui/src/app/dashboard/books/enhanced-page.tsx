@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useBooks } from '@/hooks/useBooks';
 import { useDashboard } from '@/hooks/useDashboard';
+import { useLibrary } from '@/contexts/LibraryContext';
 import BookCard from '@/components/books/BookCard';
 import SearchAndFilter, { BookFilters } from '@/components/books/SearchAndFilter';
 import BookFormModal from '@/components/books/BookFormModal';
@@ -36,6 +37,7 @@ export default function EnhancedBooksPage() {
   } = useBooks();
 
   const { isAdmin, addActivity } = useDashboard();
+  const { actions: libraryActions } = useLibrary();
 
   // Local state for UI
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -154,7 +156,7 @@ export default function EnhancedBooksPage() {
           {/* Refresh Button */}
           <Button
             variant="secondary"
-            onClick={() => window.location.reload()}
+            onClick={() => libraryActions.loadBooks()}
             className="flex items-center"
             disabled={operationsLoading}
           >

@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/auth-store';
-import { FiClock, FiCheck, FiX, FiDollarSign, FiAlertCircle } from 'react-icons/fi';
+import { FiClock, FiCheck, FiX, FiDollarSign, FiAlertCircle, FiRefreshCw } from 'react-icons/fi';
 import { Loan, Fine, LoanStatus, FineStatus } from '@/lib/api/types';
 import { userProfileService } from '@/lib/api/services/user-profile.service';
 import { fineService } from '@/lib/api/services/fine.service';
 import ProfileTabs from '@/components/profile/ProfileTabs';
+import { toast } from 'react-hot-toast';
 
 interface LoanWithFine extends Loan {
     fine?: Fine;
@@ -20,6 +21,7 @@ export default function UserHistoryPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [totalFines, setTotalFines] = useState<number>(0);
+    const [isRefreshingFines, setIsRefreshingFines] = useState(false);
 
     useEffect(() => {
         if (!user) {
@@ -36,18 +38,42 @@ export default function UserHistoryPage() {
         setError(null);
         
         try {
-            const [loanHistoryData, userTotalFines] = await Promise.all([
+            const [loanHistoryData, userTotalFines, userFines] = await Promise.all([
                 userProfileService.getUserLoanHistory(Number(user.id)),
-                fineService.getUserTotalFines(Number(user.id))
+                fineService.getUserTotalFines(Number(user.id)),
+                fineService.getFinesByUserId(Number(user.id))
             ]);
             
-            setLoanHistory(loanHistoryData);
+            const enhancedLoans: LoanWithFine[] = loanHistoryData.map(loan => {
+                const matchingFine = userFines.find(f => f.loan?.id === loan.id);
+                return matchingFine ? { ...loan, fine: matchingFine } : loan;
+            });
+            
+            setLoanHistory(enhancedLoans);
             setTotalFines(userTotalFines);
         } catch (err) {
             console.error('Failed to load loan history:', err);
             setError('Failed to load your loan history. Please try again.');
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleRefreshFines = async () => {
+        setIsRefreshingFines(true);
+        setError(null);
+
+        try {
+            const result = await fineService.calculateOverdueFines();
+            toast.success(result.message || 'Fines have been successfully updated.');
+            await loadLoanHistory(); // Refresh the entire history view
+        } catch (err: any) {
+            console.error('Failed to refresh fines:', err);
+            const errorMessage = err?.response?.data?.error || err?.message || 'Failed to update fines. Please try again.';
+            setError(errorMessage);
+            toast.error(errorMessage);
+        } finally {
+            setIsRefreshingFines(false);
         }
     };
 
@@ -94,11 +120,30 @@ export default function UserHistoryPage() {
         try {
             const result = await fineService.payFine(fineId);
             console.log('Fine payment successful:', result);
+            toast.success('Fine paid successfully!');
             await loadLoanHistory(); // Refresh the data
         } catch (err: any) {
             console.error('Failed to pay fine:', err);
             const errorMessage = err?.response?.data?.error || err?.message || 'Failed to pay fine. Please try again.';
             setError(errorMessage);
+            toast.error(errorMessage);
+        }
+    };
+
+    const handlePayAllFines = async () => {
+        if (!user) return;
+        try {
+            const pendingFines = await fineService.getPendingFinesByUserId(Number(user.id));
+            for (const fine of pendingFines) {
+                await fineService.payFine(fine.id);
+            }
+            toast.success('All fines paid successfully!');
+            await loadLoanHistory();
+        } catch (err: any) {
+            console.error('Failed to pay fines:', err);
+            const errorMessage = err?.response?.data?.error || err?.message || 'Failed to pay fines. Please try again.';
+            setError(errorMessage);
+            toast.error(errorMessage);
         }
     };
 
@@ -139,7 +184,17 @@ export default function UserHistoryPage() {
 
                     {/* History Content */}
                     <div className="p-6">
-                        <h2 className="text-2xl font-bold text-slate-800 mb-6">Loan History</h2>
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold text-slate-800">Loan History</h2>
+                            <button
+                                onClick={handleRefreshFines}
+                                disabled={isRefreshingFines}
+                                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-300 transition-colors"
+                            >
+                                <FiRefreshCw className={`mr-2 ${isRefreshingFines ? 'animate-spin' : ''}`} />
+                                {isRefreshingFines ? 'Refreshing...' : 'Refresh Fines'}
+                            </button>
+                        </div>
                         
                         {error && (
                             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
@@ -153,14 +208,22 @@ export default function UserHistoryPage() {
                         {/* Outstanding Fines Summary */}
                         {totalFines > 0 && (
                             <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-                                <div className="flex items-center">
-                                    <FiDollarSign className="h-5 w-5 text-yellow-400 mr-3" />
-                                    <div>
-                                        <h3 className="text-sm font-medium text-yellow-800">Outstanding Fines</h3>
-                                        <p className="text-sm text-yellow-700">
-                                            You have ${totalFines.toFixed(2)} in outstanding fines.
-                                        </p>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center">
+                                        <FiDollarSign className="h-5 w-5 text-yellow-400 mr-3" />
+                                        <div>
+                                            <h3 className="text-sm font-medium text-yellow-800">Outstanding Fines</h3>
+                                            <p className="text-sm text-yellow-700">
+                                                You have ${totalFines.toFixed(2)} in outstanding fines.
+                                            </p>
+                                        </div>
                                     </div>
+                                    <button
+                                        onClick={handlePayAllFines}
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                                    >
+                                        Pay Now
+                                    </button>
                                 </div>
                             </div>
                         )}
@@ -270,7 +333,7 @@ export default function UserHistoryPage() {
                                 </li>
                                 <li className="flex items-start">
                                     <span className="flex-shrink-0 h-5 w-5 text-green-500 mr-2">•</span>
-                                    <span>Late fees are $0.25 per day for overdue items.</span>
+                                    <span>Late fees are $0.50 per day for overdue items.</span>
                                 </li>
                                 <li className="flex items-start">
                                     <span className="flex-shrink-0 h-5 w-5 text-green-500 mr-2">•</span>
@@ -283,4 +346,4 @@ export default function UserHistoryPage() {
             </div>
         </div>
     );
-} 
+}

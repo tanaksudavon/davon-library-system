@@ -5,15 +5,21 @@ import { useRouter } from 'next/navigation';
 import { Book, BookStatus, UserRole, LoanStatus} from '@/lib/api/types';
 import { bookService } from '@/lib/api/services/book.service';
 import { loanService } from '@/lib/api/services/loan.service';
+import { reservationService } from '@/lib/api/services/reservation.service';
 import { authService } from '@/lib/services/auth-service';
-import { FiPlus, FiSearch, FiBookOpen } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiBookOpen, FiX } from 'react-icons/fi';
 import BookFormModal from '@/components/books/BookFormModal';
+import BookCard from '@/components/books/BookCard';
 
 export default function BooksPage() {
   const [books, setBooks] = useState<Book[]>([]);
   const [filteredBooks, setFilteredBooks] = useState<Book[]>([]);
   const [userLoans, setUserLoans] = useState<any[]>([]);
+  const [userReservations, setUserReservations] = useState<any[]>([]);
+  const [allLoans, setAllLoans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reservingBooks, setReservingBooks] = useState<Set<number>>(new Set());
+  const [cancellingReservations, setCancellingReservations] = useState<Set<number>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
@@ -49,10 +55,35 @@ export default function BooksPage() {
     }
   }, [currentUser]);
 
+  const loadUserReservations = useCallback(async () => {
+    if (!currentUser) return;
+    try {
+      const reservations = await reservationService.getUserReservations(currentUser.id);
+      setUserReservations(reservations);
+    } catch (error) {
+      console.error('Failed to load user reservations:', error);
+    }
+  }, [currentUser]);
+
+  const loadAllLoans = useCallback(async () => {
+    if (!isAdmin) return;
+    try {
+      const loans = await loanService.getAllLoans();
+      setAllLoans(loans);
+    } catch (error) {
+      console.error('Failed to load all loans:', error);
+    }
+  }, [isAdmin]);
+
   useEffect(() => {
     loadBooks();
-    if (currentUser && !isAdmin) {
-      loadUserLoans();
+    if (currentUser) {
+      if (isAdmin) {
+        loadAllLoans();
+      } else {
+        loadUserLoans();
+        loadUserReservations();
+      }
     }
   }, []); // Empty dependency array - only run once on mount
 
@@ -62,9 +93,39 @@ export default function BooksPage() {
     );
   };
 
+  const hasActiveReservation = (bookId: number) => {
+    return userReservations.some(reservation => 
+      reservation.book.id === bookId && reservation.status === 'ACTIVE'
+    );
+  };
+
+  const getUserReservationForBook = (bookId: number) => {
+    return userReservations.find(reservation => 
+      reservation.book.id === bookId && reservation.status === 'ACTIVE'
+    );
+  };
+
+  const getCurrentBorrower = (bookId: number) => {
+    if (!isAdmin || !allLoans.length) return null;
+    
+    // Find active loan for this book (status BORROWED or null for existing loans, and no return date)
+    const activeLoan = allLoans.find(loan => 
+      loan.book.id === bookId && 
+      (loan.status === LoanStatus.BORROWED || loan.status === null) && 
+      !loan.returnDate
+    );
+    
+    return activeLoan ? activeLoan.user : null;
+  };
+
   const handleReturn = async (book: Book) => {
     try {
-      const result = await bookService.returnBook(book.id);
+      if (!currentUser) {
+        console.error('No current user found');
+        return;
+      }
+
+      const result = await bookService.returnBook(book.id, currentUser.id);
       console.log('Return successful:', result);
       
       // Extract the book from the result (in case it returns a Loan object)
@@ -72,8 +133,70 @@ export default function BooksPage() {
       
       setBooks(books.map(b => b.id === book.id ? updatedBook : b));
       setFilteredBooks(filteredBooks.map(b => b.id === book.id ? updatedBook : b));
+      
+      // Reload user loans to update button states
+      if (currentUser) {
+        loadUserLoans();
+      }
     } catch (err: any) {
       console.error('Failed to return book:', err);
+    }
+  };
+
+  const handleCancelReservation = async (book: Book) => {
+    try {
+      if (!currentUser) {
+        console.error('No current user found');
+        return;
+      }
+
+      const reservation = getUserReservationForBook(book.id);
+      if (!reservation) {
+        console.error('No active reservation found for this book');
+        return;
+      }
+
+      // Set loading state
+      setCancellingReservations(prev => {
+        const newSet = new Set(prev);
+        newSet.add(book.id);
+        return newSet;
+      });
+
+      // Optimistically update the UI first for immediate feedback
+      const updatedReservations = userReservations.filter(r => r.id !== reservation.id);
+      setUserReservations(updatedReservations);
+
+      await reservationService.cancelReservation(reservation.id, currentUser.id);
+      console.log('Reservation cancelled successfully');
+      
+      // Add a small delay to ensure backend has processed the change
+      setTimeout(async () => {
+        // Reload books and reservations to get the latest state
+        await Promise.all([
+          loadBooks(),
+          loadUserReservations()
+        ]);
+        
+        // Clear loading state
+        setCancellingReservations(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(book.id);
+          return newSet;
+        });
+      }, 500); // 500ms delay
+      
+    } catch (err: any) {
+      console.error('Failed to cancel reservation:', err);
+      // If cancellation failed, reload to restore correct state
+      loadUserReservations();
+      
+      // Clear loading state
+      setCancellingReservations(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(book.id);
+        return newSet;
+      });
     }
   };
 
@@ -131,7 +254,7 @@ export default function BooksPage() {
       case BookStatus.BORROWED:
         if (isCurrentUserBorrower(book.id)) {
           handleReturn(book);
-        } else {
+        } else if (!hasActiveReservation(book.id)) {
           router.push(`/dashboard/reserve/${book.id}`);
         }
         break;
@@ -224,6 +347,7 @@ export default function BooksPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Author</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Borrower</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
@@ -255,6 +379,21 @@ export default function BooksPage() {
                             {getClickableStatusText(book.status, book.id)}
                           </span>
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {(() => {
+                            const borrower = getCurrentBorrower(book.id);
+                            
+                            if (book.status === BookStatus.BORROWED && borrower) {
+                              return (
+                                <div>
+                                  <div className="font-medium">{borrower.firstName} {borrower.lastName}</div>
+                                  <div className="text-gray-500 text-xs">{borrower.email}</div>
+                                </div>
+                              );
+                            }
+                            return <span className="text-gray-400">—</span>;
+                          })()}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                           <button
                             onClick={() => handleEditBook(book)}
@@ -273,7 +412,7 @@ export default function BooksPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center">
+                      <td colSpan={6} className="px-6 py-12 text-center">
                         <FiBookOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                         <h3 className="text-lg font-medium text-gray-900 mb-2">No books found</h3>
                         <p className="text-gray-600 mb-4">
@@ -293,113 +432,19 @@ export default function BooksPage() {
               </table>
             </div>
           ) : (
-            /* Normal User Card View with Clickable Status Badges */
+            /* Normal User Card View using BookCard Component */
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {filteredBooks.length > 0 ? (
                 filteredBooks.map(book => (
-                  <div key={book.id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden">
-                    {/* Book Cover */}
-                    <div className="h-48 bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
-                      <FiBookOpen className="text-6xl text-white opacity-80" />
-                    </div>
-
-                    {/* Book Details */}
-                    <div className="p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900 line-clamp-2">
-                          {book.title}
-                        </h3>
-                        <button
-                          onClick={() => handleStatusClick(book)}
-                          disabled={book.status === BookStatus.RESERVED}
-                          className={`px-2 py-1 rounded-full text-xs font-medium transition-all duration-200 ${getStatusColor(book.status)} ${
-                            book.status !== BookStatus.RESERVED 
-                              ? 'hover:scale-105 hover:shadow-md cursor-pointer' 
-                              : 'cursor-not-allowed opacity-75'
-                          }`}
-                          title={getClickableStatusText(book.status, book.id)}
-                        >
-                          {getClickableStatusText(book.status, book.id)}
-                        </button>
-                      </div>
-
-                      <div className="space-y-2 mb-4">
-                        <div className="flex items-center text-gray-600">
-                          <FiBookOpen className="w-4 h-4 mr-2" />
-                          <span className="text-sm">{`${book.author.firstName} ${book.author.lastName}`}</span>
-                        </div>
-                        
-                        {book.isbn && (
-                          <div className="flex items-center text-gray-600">
-                            <FiBookOpen className="w-4 h-4 mr-2" />
-                            <span className="text-sm">ISBN: {book.isbn}</span>
-                          </div>
-                        )}
-
-                        {book.publishDate && (
-                          <div className="flex items-center text-gray-600">
-                            <FiSearch className="w-4 h-4 mr-2" />
-                            <span className="text-sm">Published: {new Date(book.publishDate).getFullYear()}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Description */}
-                      {book.description && (
-                        <p className="text-gray-600 text-sm mb-4 line-clamp-3">
-                          {book.description}
-                        </p>
-                      )}
-
-                      {/* Action Buttons */}
-                      <div className="flex flex-wrap gap-2">
-                        {/* Available books can be borrowed */}
-                        {book.status === BookStatus.AVAILABLE && (
-                          <button
-                            onClick={() => router.push(`/dashboard/borrow/${book.id}`)}
-                            className="flex items-center px-3 py-2 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 transition-colors"
-                          >
-                            <FiBookOpen className="w-4 h-4 mr-1" />
-                            Borrow
-                          </button>
-                        )}
-                        
-                        {/* Borrowed books - return for borrower, reserve for others */}
-                        {book.status === BookStatus.BORROWED && (
-                          <>
-                            {isCurrentUserBorrower(book.id) ? (
-                              <button
-                                onClick={() => handleReturn(book)}
-                                className="flex items-center px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
-                              >
-                                <FiBookOpen className="w-4 h-4 mr-1" />
-                                Return
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => router.push(`/dashboard/reserve/${book.id}`)}
-                                className="flex items-center px-3 py-2 bg-orange-500 text-white text-sm rounded-lg hover:bg-orange-600 transition-colors"
-                              >
-                                <FiSearch className="w-4 h-4 mr-1" />
-                                Reserve
-                              </button>
-                            )}
-                          </>
-                        )}
-
-                        {/* Reserved books show status only */}
-                        {book.status === BookStatus.RESERVED && (
-                          <button
-                            disabled
-                            className="flex items-center px-3 py-2 bg-gray-300 text-gray-500 text-sm rounded-lg opacity-50 cursor-not-allowed"
-                          >
-                            <FiSearch className="w-4 h-4 mr-1" />
-                            Reserved
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                  <BookCard
+                    key={book.id}
+                    book={book}
+                    isAdmin={false}
+                    onReturn={handleReturn}
+                    isReservedByUser={hasActiveReservation(book.id)}
+                    onCancelReservation={handleCancelReservation}
+                    isCurrentUserBorrower={isCurrentUserBorrower(book.id)}
+                  />
                 ))
               ) : (
                 <div className="col-span-full text-center py-12">
@@ -468,7 +513,13 @@ export default function BooksPage() {
       case BookStatus.AVAILABLE:
         return '🔷 Available - Click to Borrow';
       case BookStatus.BORROWED:
-        return isCurrentUserBorrower(bookId) ? '📖 Borrowed - Click to Return' : '📅 Borrowed - Click to Reserve';
+        if (isCurrentUserBorrower(bookId)) {
+          return '📖 Borrowed - Click to Return';
+        } else if (hasActiveReservation(bookId)) {
+          return '📅 Borrowed - Already Reserved';
+        } else {
+          return '📅 Borrowed - Click to Reserve';
+        }
       case BookStatus.RESERVED:
         return '📋 Reserved';
       default:

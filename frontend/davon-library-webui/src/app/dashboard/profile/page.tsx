@@ -10,11 +10,7 @@ export default function ProfilePage() {
     const router = useRouter();
     const { user, clearAuth } = useAuthStore();
 
-    // Redirect if not authenticated
-    if (!user) {
-        router.push('/login');
-        return null;
-    }
+
 
     const handleLogout = () => {
         clearAuth();

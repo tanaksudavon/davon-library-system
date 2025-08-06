@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/auth-store';
-import { FiSearch, FiBookOpen, FiClock, FiCalendar, FiAlertCircle } from 'react-icons/fi';
+import { FiSearch, FiBookOpen, FiClock, FiCalendar, FiAlertCircle, FiX } from 'react-icons/fi';
 import { Book, Loan, Reservation, LoanStatus, BookStatus } from '@/lib/api/types';
 import { userProfileService } from '@/lib/api/services/user-profile.service';
 import { bookService } from '@/lib/api/services/book.service';
+import { reservationService } from '@/lib/api/services/reservation.service';
 import ProfileTabs from '@/components/profile/ProfileTabs';
 
 interface UserBook {
@@ -86,15 +87,48 @@ export default function UserBooksPage() {
     };
 
     const handleReturnBook = async (bookId: number) => {
+        if (!user) {
+            setError('You must be logged in to return a book.');
+            return;
+        }
         try {
             setError(null);
-            const result = await bookService.returnBook(bookId);
+            const result = await bookService.returnBook(bookId, Number(user.id));
             console.log('Return successful:', result);
             await loadUserBooks(); // Refresh the list
         } catch (err: any) {
             console.error('Failed to return book:', err);
             const errorMessage = err?.response?.data?.error || err?.message || 'Failed to return book. Please try again.';
             setError(errorMessage);
+        }
+    };
+
+    const handleCancelReservation = async (reservationId: number) => {
+        if (!user) return;
+        
+        try {
+            setError(null);
+            
+            // Optimistically update the UI first for immediate feedback
+            const updatedBooks = books.filter(userBook => 
+                !(userBook.type === 'reserved' && userBook.reservation?.id === reservationId)
+            );
+            setBooks(updatedBooks);
+            
+            await reservationService.cancelReservation(reservationId, Number(user.id));
+            console.log('Reservation cancelled successfully');
+            
+            // Add a small delay then refresh the list
+            setTimeout(async () => {
+                await loadUserBooks();
+            }, 500); // 500ms delay
+            
+        } catch (err: any) {
+            console.error('Failed to cancel reservation:', err);
+            const errorMessage = err?.response?.data?.error || err?.message || 'Failed to cancel reservation. Please try again.';
+            setError(errorMessage);
+            // If cancellation failed, reload to restore correct state
+            await loadUserBooks();
         }
     };
 
@@ -268,9 +302,19 @@ export default function UserBooksPage() {
                                                 )}
 
                                                 {userBook.type === 'reserved' && (
-                                                    <div className="w-full flex justify-center items-center py-2 px-4 border border-yellow-300 rounded-md shadow-sm text-sm font-medium text-yellow-700 bg-yellow-50">
-                                                        <FiClock className="mr-2" /> 
-                                                        {userBook.queuePosition ? `Position #${userBook.queuePosition}` : 'Reserved'}
+                                                    <div className="space-y-2">
+                                                        <div className="w-full flex justify-center items-center py-2 px-4 border border-yellow-300 rounded-md shadow-sm text-sm font-medium text-yellow-700 bg-yellow-50">
+                                                            <FiClock className="mr-2" /> 
+                                                            {userBook.queuePosition ? `Position #${userBook.queuePosition}` : 'Reserved'}
+                                                        </div>
+                                                        {userBook.reservation && (
+                                                            <button
+                                                                onClick={() => handleCancelReservation(userBook.reservation!.id)}
+                                                                className="w-full flex justify-center items-center py-2 px-4 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none"
+                                                            >
+                                                                <FiX className="mr-2" /> Cancel Reservation
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 )}
                                             </div>
