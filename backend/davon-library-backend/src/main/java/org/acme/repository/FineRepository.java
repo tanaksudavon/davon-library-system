@@ -5,6 +5,7 @@ import org.acme.model.Fine;
 import org.acme.model.FineStatus;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.List;
+import java.util.Optional;
 import java.time.LocalDate;
 
 @ApplicationScoped
@@ -20,6 +21,16 @@ public class FineRepository implements PanacheRepository<Fine> {
 
     public List<Fine> findByLoanId(Long loanId) {
         return list("loan.id", loanId);
+    }
+
+    public Optional<Fine> findFineByIdWithDetails(Long fineId) {
+        return find("SELECT f FROM Fine f " +
+                "LEFT JOIN FETCH f.loan l " +
+                "LEFT JOIN FETCH l.book b " +
+                "LEFT JOIN FETCH b.author " +
+                "LEFT JOIN FETCH b.category " +
+                "LEFT JOIN FETCH f.user " +
+                "WHERE f.id = ?1", fineId).firstResultOptional();
     }
 
     public List<Fine> findFinesBetween(LocalDate startDate, LocalDate endDate) {
