@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { User, UserUpdateInput } from '@/types/user';
-import { userService } from '@/lib/services/user-service';
+import { User, UserRole, UserUpdateRequest } from '@/lib/api/types';
+import { userService } from '@/lib/api/services/user.service';
 
 interface UserEditModalProps {
     user: User;
@@ -11,16 +11,19 @@ interface UserEditModalProps {
 }
 
 export default function UserEditModal({ user, onClose, onUpdate }: UserEditModalProps) {
-    const [formData, setFormData] = useState<UserUpdateInput>({
+    const [formData, setFormData] = useState({
         username: user.username,
         email: user.email,
         role: user.role,
+        phoneNumber: user.phoneNumber || '',
+        status: user.status,
+        password: '',
     });
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            userService.updateUser(user.id, formData);
+            await userService.updateUser(user.id, { ...formData, id: user.id } as UserUpdateRequest);
             onUpdate();
             onClose();
         } catch (error) {
@@ -64,11 +67,39 @@ export default function UserEditModal({ user, onClose, onUpdate }: UserEditModal
                         </label>
                         <select
                             value={formData.role}
-                            onChange={(e) => setFormData({ ...formData, role: e.target.value as 'admin' | 'user' })}
+                            onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                         >
-                            <option value="user">User</option>
-                            <option value="admin">Admin</option>
+                            <option value={UserRole.MEMBER}>Member</option>
+                            <option value={UserRole.LIBRARIAN}>Librarian</option>
+                        </select>
+                    </div>
+
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700">
+                            Phone Number
+                        </label>
+                        <input
+                            type="tel"
+                            value={formData.phoneNumber}
+                            onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            placeholder="Enter phone number"
+                        />
+                    </div>
+
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700">
+                            Status
+                        </label>
+                        <select
+                            value={formData.status}
+                            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        >
+                            <option value="ACTIVE">Active</option>
+                            <option value="INACTIVE">Inactive</option>
+                            <option value="SUSPENDED">Suspended</option>
                         </select>
                     </div>
 

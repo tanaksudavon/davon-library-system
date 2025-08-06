@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-// import UserEditModal from './UserEditModal';
+import UserEditModal from './UserEditModal';
 import { User } from '@/lib/api/types';
 import { userService } from '@/lib/api/services/user.service';
 
@@ -9,8 +9,8 @@ export default function UserList() {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  // const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -32,8 +32,8 @@ export default function UserList() {
   };
 
   const handleEdit = (user: User) => {
-    // setSelectedUser(user);
-    // setIsModalOpen(true);
+    setSelectedUser(user);
+    setIsModalOpen(true);
     console.log('Edit user:', user);
   };
 
@@ -130,7 +130,7 @@ export default function UserList() {
         </tbody>
       </table>
 
-      {/* {selectedUser && (
+      {selectedUser && isModalOpen && (
         <UserEditModal
           user={selectedUser}
           onClose={() => {
@@ -143,7 +143,7 @@ export default function UserList() {
             setSelectedUser(null);
           }}
         />
-      )} */}
+      )}
     </div>
   );
 } 

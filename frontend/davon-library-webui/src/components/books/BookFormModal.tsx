@@ -3,6 +3,7 @@ import { Book, BookStatus, Author, Category, BookCreateRequest, BookUpdateReques
 import { bookService } from '@/lib/api/services/book.service';
 import { authorService } from '@/lib/api/services/author.service';
 import { categoryService } from '@/lib/api/services/category.service';
+import { useLibrary } from '@/contexts/LibraryContext';
 import { FiX, FiPlus, FiSearch } from 'react-icons/fi';
 
 interface BookFormModalProps {
@@ -13,6 +14,8 @@ interface BookFormModalProps {
 }
 
 export default function BookFormModal({ isOpen, onClose, onSuccess, book }: BookFormModalProps) {
+  const { actions } = useLibrary();
+  
   const [formData, setFormData] = useState<BookCreateRequest>({
     title: '',
     authorId: 0,
@@ -123,9 +126,9 @@ export default function BookFormModal({ isOpen, onClose, onSuccess, book }: Book
       let savedBook: Book;
       if (book) {
         const updateData: BookUpdateRequest = { id: book.id, ...formData };
-        savedBook = await bookService.updateBook(book.id, updateData);
+        savedBook = await actions.updateBook(book.id, updateData);
       } else {
-        savedBook = await bookService.createBook(formData);
+        savedBook = await actions.addBook(formData);
       }
       onSuccess(savedBook);
       onClose();

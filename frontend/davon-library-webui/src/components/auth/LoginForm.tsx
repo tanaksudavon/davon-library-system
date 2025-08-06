@@ -40,11 +40,8 @@ export default function LoginForm() {
       const response = await authService.login({ username, password });
       console.log('Login successful:', response);
       
-      if (response.role === 'LIBRARIAN') {
-        router.push('/dashboard');
-      } else {
-        router.push('/dashboard/profile');
-      }
+      // Send all users to main dashboard regardless of role
+      router.push('/dashboard');
     } catch (err) {
       console.error('Login error:', err);
       setError('Invalid username or password');
@@ -123,17 +120,7 @@ export default function LoginForm() {
         </button>
       </div>
 
-      {process.env.NODE_ENV === 'development' && (
-        <div>
-          <button
-            type="button"
-            onClick={handleClearAuth}
-            className="group relative w-full flex justify-center py-2 px-4 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-          >
-            🗑️ Clear Auth Data (Debug)
-          </button>
-        </div>
-      )}
+
     </form>
   );
 }
