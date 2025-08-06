@@ -3,7 +3,6 @@ package org.acme.service;
 import org.acme.model.Fine;
 import org.acme.model.FineStatus;
 import org.acme.model.Loan;
-import org.acme.model.Book;
 import org.acme.repository.FineRepository;
 import org.acme.repository.LoanRepository;
 
@@ -19,11 +18,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-/**
- * Service for handling fine calculations and payments.
- * This service provides methods to calculate, retrieve, and pay fines for
- * overdue books.
- */
 @ApplicationScoped
 public class FineCalculationService {
 
@@ -39,48 +33,45 @@ public class FineCalculationService {
         this.fineRepository = fineRepository;
     }
 
-    /**
-     * Calculates and persists fines for all overdue loans.
-     * This method iterates through all non-returned loans, calculates fines for
-     * overdue ones,
-     * and creates new fine records if they don't already exist.
-     *
-     * @return A list of newly created fines.
-     */
     @Transactional
     public List<Fine> calculateOverdueFines() {
         List<Loan> overdueLoans = loanRepository.findOverdueLoans(LocalDate.now());
-        List<Fine> newFines = new ArrayList<>();
+        List<Fine> updatedOrCreatedFines = new ArrayList<>();
 
         for (Loan loan : overdueLoans) {
             if (loan == null || loan.getDueDate() == null) {
                 continue; // Skip invalid loan data
             }
 
-            findExistingFineForLoan(loan.getId()).ifPresentOrElse(
-                    existingFine -> {
-                        // Fine already exists, potentially update it if logic changes
-                    },
-                    () -> {
-                        long overdueDays = ChronoUnit.DAYS.between(loan.getDueDate(), LocalDate.now());
-                        if (overdueDays > 0) {
-                            BigDecimal fineAmount = calculateFineAmount(overdueDays);
-                            Fine newFine = createFineObject(loan, fineAmount);
-                            fineRepository.persist(newFine);
-                            newFines.add(newFine);
-                        }
-                    });
+            long overdueDays = ChronoUnit.DAYS.between(loan.getDueDate(), LocalDate.now());
+            if (overdueDays <= 0) {
+                continue; // Not overdue
+            }
+
+            BigDecimal newFineAmount = calculateFineAmount(overdueDays);
+
+            Optional<Fine> existingFineOpt = findExistingFineForLoan(loan.getId());
+
+            if (existingFineOpt.isPresent()) {
+                Fine existingFine = existingFineOpt.get();
+                updateExistingFine(existingFine, newFineAmount, updatedOrCreatedFines);
+            } else {
+                Fine newFine = createFineObject(loan, newFineAmount);
+                fineRepository.persist(newFine);
+                updatedOrCreatedFines.add(newFine);
+            }
         }
-        return newFines;
+        return updatedOrCreatedFines;
     }
 
-    /**
-     * Calculates the fine amount based on the number of overdue days.
-     * The fine is capped at a maximum value.
-     *
-     * @param overdueDays The number of days a book is overdue.
-     * @return The calculated fine amount as a BigDecimal.
-     */
+    private void updateExistingFine(Fine existingFine, BigDecimal newFineAmount, List<Fine> updatedFines) {
+        if (existingFine.getStatus() == FineStatus.PENDING && newFineAmount.compareTo(existingFine.getAmount()) > 0) {
+            existingFine.setAmount(newFineAmount);
+            fineRepository.persist(existingFine);
+            updatedFines.add(existingFine);
+        }
+    }
+
     private BigDecimal calculateFineAmount(long overdueDays) {
         if (overdueDays <= 0) {
             return BigDecimal.ZERO;
@@ -89,12 +80,6 @@ public class FineCalculationService {
         return totalFine.compareTo(MAXIMUM_FINE) > 0 ? MAXIMUM_FINE : totalFine;
     }
 
-    /**
-     * Retrieves the total outstanding fines for a specific user.
-     *
-     * @param userId The ID of the user.
-     * @return The total sum of unpaid fines as a BigDecimal.
-     */
     public BigDecimal getTotalFinesForUser(Long userId) {
         Objects.requireNonNull(userId, "User ID cannot be null");
         List<Fine> userFines = fineRepository.findByUserIdAndStatus(userId, FineStatus.PENDING);
@@ -105,42 +90,11 @@ public class FineCalculationService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    /**
-     * Marks a fine as paid.
-     *
-     * @param fineId The ID of the fine to be paid.
-     * @return The updated Fine object.
-     * @throws NotFoundException if the fine with the given ID is not found.
-     */
     @Transactional
     public Fine payFine(Long fineId) {
         Objects.requireNonNull(fineId, "Fine ID cannot be null");
-        Fine fine = fineRepository.findByIdOptional(fineId)
+        Fine fine = fineRepository.findFineByIdWithDetails(fineId)
                 .orElseThrow(() -> new NotFoundException("Fine not found with ID: " + fineId));
-
-        // Eagerly load related entities to prevent LazyInitializationException
-        if (fine.getLoan() != null) {
-            Loan loan = fine.getLoan();
-            // Force loading of loan's related entities
-            if (loan.getBook() != null) {
-                Book book = loan.getBook();
-                if (book.getAuthor() != null) {
-                    book.getAuthor().getFirstName();
-                    book.getAuthor().getLastName();
-                }
-                if (book.getCategory() != null) {
-                    book.getCategory().getName();
-                }
-            }
-            if (loan.getUser() != null) {
-                loan.getUser().getFirstName();
-                loan.getUser().getLastName();
-            }
-        }
-        if (fine.getUser() != null) {
-            fine.getUser().getFirstName();
-            fine.getUser().getLastName();
-        }
 
         fine.setStatus(FineStatus.PAID);
         fine.setPaidDate(LocalDate.now());
@@ -148,23 +102,10 @@ public class FineCalculationService {
         return fine;
     }
 
-    /**
-     * Finds an existing fine for a given loan ID.
-     *
-     * @param loanId The ID of the loan.
-     * @return An Optional containing the fine if found, otherwise empty.
-     */
     private Optional<Fine> findExistingFineForLoan(Long loanId) {
         return fineRepository.findByLoanId(loanId).stream().findFirst();
     }
 
-    /**
-     * Helper method to create a new Fine object.
-     *
-     * @param loan   The loan for which the fine is being created.
-     * @param amount The amount of the fine.
-     * @return A new Fine object, ready to be persisted.
-     */
     private Fine createFineObject(Loan loan, BigDecimal amount) {
         Fine fine = new Fine();
         fine.setLoan(loan);

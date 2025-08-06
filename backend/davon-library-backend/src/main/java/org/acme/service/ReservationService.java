@@ -4,9 +4,11 @@ import org.acme.model.Book;
 import org.acme.model.BookStatus;
 import org.acme.model.Reservation;
 import org.acme.model.ReservationStatus;
+import org.acme.model.Loan;
 import org.acme.repository.BookRepository;
 import org.acme.repository.ReservationRepository;
 import org.acme.repository.UserRepository;
+import org.acme.repository.LoanRepository;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -31,16 +33,20 @@ public class ReservationService {
     private final ReservationRepository reservationRepository;
     private final BookRepository bookRepository;
     private final UserRepository userRepository;
+    private final LoanRepository loanRepository;
+    private final NotificationService notificationService;
 
     private static final int RESERVATION_EXPIRATION_DAYS = 7;
     private static final int MAX_ACTIVE_RESERVATIONS_PER_USER = 5;
 
     @Inject
     public ReservationService(ReservationRepository reservationRepository, BookRepository bookRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository, LoanRepository loanRepository, NotificationService notificationService) {
         this.reservationRepository = reservationRepository;
         this.bookRepository = bookRepository;
         this.userRepository = userRepository;
+        this.loanRepository = loanRepository;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -62,7 +68,7 @@ public class ReservationService {
         Book book = bookRepository.findByIdOptional(bookId)
                 .orElseThrow(() -> new NotFoundException("Book not found with ID: " + bookId));
 
-        if (book.getStatus() != BookStatus.AVAILABLE) {
+        if (book.getStatus() != BookStatus.AVAILABLE && book.getStatus() != BookStatus.BORROWED) {
             throw new IllegalStateException("Book is not available for reservation.");
         }
 
@@ -82,13 +88,26 @@ public class ReservationService {
         reservation.setReservationDate(LocalDate.now());
         reservation.setExpirationDate(LocalDate.now().plusDays(RESERVATION_EXPIRATION_DAYS));
         reservation.setStatus(ReservationStatus.ACTIVE);
+
+        // Calculate queue position
+        int queuePosition = getNextQueuePosition(bookId);
+        reservation.setQueuePosition(queuePosition);
+
         reservation.setCreatedAt(LocalDateTime.now());
         reservation.setUpdatedAt(LocalDateTime.now());
 
-        book.setStatus(BookStatus.RESERVED);
-        bookRepository.persist(book);
+        // Only change status to RESERVED if book was AVAILABLE
+        // BORROWED books should remain BORROWED even when reserved
+        if (book.getStatus() == BookStatus.AVAILABLE) {
+            book.setStatus(BookStatus.RESERVED);
+            bookRepository.persist(book);
+        }
 
         reservationRepository.persist(reservation);
+
+        // Create notification for book reserved
+        notificationService.createBookReservedNotification(userId, book.getTitle());
+
         return reservation;
     }
 
@@ -117,10 +136,23 @@ public class ReservationService {
         reservation.setUpdatedAt(LocalDateTime.now());
 
         Book book = reservation.getBook();
-        book.setStatus(BookStatus.AVAILABLE);
-        bookRepository.persist(book);
+
+        // Check if there are any active loans for this book
+        List<Loan> activeLoans = loanRepository.list("book.id = ?1 and returnDate is null", book.getId());
+
+        // Only set book to AVAILABLE if there are no active loans
+        if (activeLoans.isEmpty()) {
+            book.setStatus(BookStatus.AVAILABLE);
+            bookRepository.persist(book);
+        }
+        // If there are active loans, the book should remain BORROWED (don't change
+        // status)
 
         reservationRepository.persist(reservation);
+
+        // Create notification for cancelled reservation
+        notificationService.createReservationCancelledNotification(userId, book.getTitle());
+
         return reservation;
     }
 
@@ -150,8 +182,17 @@ public class ReservationService {
             reservation.setUpdatedAt(LocalDateTime.now());
 
             Book book = reservation.getBook();
-            book.setStatus(BookStatus.AVAILABLE);
-            bookRepository.persist(book);
+
+            // Check if there are any active loans for this book
+            List<Loan> activeLoans = loanRepository.list("book.id = ?1 and returnDate is null", book.getId());
+
+            // Only set book to AVAILABLE if there are no active loans
+            if (activeLoans.isEmpty()) {
+                book.setStatus(BookStatus.AVAILABLE);
+                bookRepository.persist(book);
+            }
+            // If there are active loans, the book should remain BORROWED (don't change
+            // status)
 
             reservationRepository.persist(reservation);
         }
@@ -188,5 +229,39 @@ public class ReservationService {
                 .count("user.id = ?1 and book.id = ?2 and status = ?3", userId, bookId, ReservationStatus.ACTIVE);
 
         return existingReservationForBook == 0;
+    }
+
+    /**
+     * Calculate the next queue position for a book reservation.
+     */
+    private int getNextQueuePosition(Long bookId) {
+        List<Reservation> activeReservations = reservationRepository.list(
+                "book.id = ?1 AND status = ?2 ORDER BY createdAt ASC",
+                bookId, ReservationStatus.ACTIVE);
+        return activeReservations.size() + 1;
+    }
+
+    /**
+     * Fix inconsistent reservation states - marks reservations as FULFILLED
+     * when user has an active loan for the same book.
+     * This is a utility method to fix existing data.
+     */
+    @Transactional
+    public int fixInconsistentReservations() {
+        // Find reservations that are ACTIVE but user has an active loan for the same
+        // book
+        List<Reservation> inconsistentReservations = reservationRepository.find(
+                "status = ?1 AND EXISTS (SELECT 1 FROM Loan l WHERE l.book.id = book.id AND l.user.id = user.id AND l.returnDate IS NULL)",
+                ReservationStatus.ACTIVE).list();
+
+        int updatedCount = 0;
+        for (Reservation reservation : inconsistentReservations) {
+            reservation.setStatus(ReservationStatus.FULFILLED);
+            reservation.setUpdatedAt(LocalDateTime.now());
+            reservationRepository.persist(reservation);
+            updatedCount++;
+        }
+
+        return updatedCount;
     }
 }

@@ -23,7 +23,7 @@ public class BookService {
 
     public List<Book> getAllBooks() {
         System.out.println("DEBUG: BookService.getAllBooks() called");
-        List<Book> books = bookRepository.listAll();
+        List<Book> books = bookRepository.listAllWithRelations();
         System.out.println("DEBUG: Found " + books.size() + " books in database");
         return books;
     }
@@ -89,7 +89,7 @@ public class BookService {
             Book existingBook = existingBookOpt.get();
 
             // Preserve system fields that shouldn't be overwritten
-            book.setStatus(existingBook.getStatus()); // Preserve status
+            // Note: Allow status updates from the UI
             book.setCreatedAt(existingBook.getCreatedAt()); // Preserve creation date
             // updatedAt will be set automatically by @PreUpdate if configured
         }

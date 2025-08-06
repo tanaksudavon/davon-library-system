@@ -1,12 +1,16 @@
 package org.acme.service;
 
 import org.acme.model.Loan;
+import org.acme.model.LoanStatus;
 import org.acme.model.Book;
 import org.acme.model.User;
 import org.acme.model.BookStatus;
+import org.acme.model.Reservation;
+import org.acme.model.ReservationStatus;
 import org.acme.repository.LoanRepository;
 import org.acme.repository.BookRepository;
 import org.acme.repository.UserRepository;
+import org.acme.repository.ReservationRepository;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -31,8 +35,40 @@ public class LoanService {
     @Inject
     private FineCalculationService fineCalculationService;
 
+    @Inject
+    private NotificationService notificationService;
+
+    @Inject
+    private ReservationService reservationService;
+
+    @Inject
+    private ReservationRepository reservationRepository;
+
+    @Transactional
     public List<Loan> getAllLoans() {
-        return loanRepository.listAll();
+        List<Loan> loans = loanRepository.listAll();
+
+        // Force loading of related entities to avoid lazy loading issues
+        for (Loan loan : loans) {
+            if (loan.getUser() != null) {
+                loan.getUser().getFirstName();
+                loan.getUser().getLastName();
+                loan.getUser().getEmail();
+            }
+            if (loan.getBook() != null) {
+                Book book = loan.getBook();
+                book.getTitle();
+                if (book.getAuthor() != null) {
+                    book.getAuthor().getFirstName();
+                    book.getAuthor().getLastName();
+                }
+                if (book.getCategory() != null) {
+                    book.getCategory().getName();
+                }
+            }
+        }
+
+        return loans;
     }
 
     public Optional<Loan> getLoanById(Long id) {
@@ -115,12 +151,27 @@ public class LoanService {
         user.getLastName();
         user.getEmail();
 
+        // Check if user has an active reservation for this book
+        List<Reservation> userReservations = reservationService.getBookReservationQueue(bookId)
+                .stream()
+                .filter(r -> r.getStatus() == ReservationStatus.ACTIVE && r.getUser().getId().equals(userId))
+                .toList();
+
+        // If user has an active reservation, mark it as fulfilled
+        if (!userReservations.isEmpty()) {
+            Reservation userReservation = userReservations.get(0);
+            userReservation.setStatus(ReservationStatus.FULFILLED);
+            userReservation.setUpdatedAt(LocalDateTime.now());
+            reservationRepository.persist(userReservation);
+        }
+
         // Create the loan
         Loan loan = new Loan();
         loan.setBook(book);
         loan.setUser(user);
         loan.setBorrowDate(LocalDate.now());
         loan.setDueDate(LocalDate.now().plusDays(30)); // 30 days loan period
+        loan.setStatus(LoanStatus.BORROWED); // Set loan status
         loan.setCreatedAt(LocalDateTime.now());
         loan.setUpdatedAt(LocalDateTime.now());
 
@@ -131,6 +182,9 @@ public class LoanService {
 
         // Save the loan
         loanRepository.persist(loan);
+
+        // Create notification for book borrowed
+        notificationService.createBookBorrowedNotification(userId, book.getTitle());
 
         return loan;
     }
@@ -165,15 +219,72 @@ public class LoanService {
             throw new RuntimeException("Book has already been returned");
         }
 
-        // Set return date
+        // Set return date and status
         loan.setReturnDate(LocalDate.now());
+        loan.setStatus(LoanStatus.RETURNED);
         loan.setUpdatedAt(LocalDateTime.now());
 
-        // Update book status to AVAILABLE
         Book book = loan.getBook();
-        book.setStatus(BookStatus.AVAILABLE);
-        book.setUpdatedAt(LocalDateTime.now());
-        bookRepository.persist(book);
+
+        // Check for active reservations
+        List<Reservation> activeReservations = reservationService.getBookReservationQueue(book.getId())
+                .stream()
+                .filter(r -> r.getStatus() == ReservationStatus.ACTIVE)
+                .sorted((r1, r2) -> r1.getCreatedAt().compareTo(r2.getCreatedAt())) // Sort by creation date (FIFO)
+                .toList();
+
+        if (!activeReservations.isEmpty()) {
+            // Get the first person in the reservation queue
+            Reservation nextReservation = activeReservations.get(0);
+            User nextUser = nextReservation.getUser();
+
+            // Force loading of next user fields
+            nextUser.getFirstName();
+            nextUser.getLastName();
+            nextUser.getEmail();
+
+            // Create a new loan for the next user
+            Loan newLoan = new Loan();
+            newLoan.setBook(book);
+            newLoan.setUser(nextUser);
+            newLoan.setBorrowDate(LocalDate.now());
+            newLoan.setDueDate(LocalDate.now().plusDays(30)); // 30 days loan period
+            newLoan.setStatus(LoanStatus.BORROWED); // Set loan status
+            newLoan.setCreatedAt(LocalDateTime.now());
+            newLoan.setUpdatedAt(LocalDateTime.now());
+            // IMPORTANT: Do NOT set returnDate - this should be null for active loans
+            newLoan.setReturnDate(null);
+
+            // Book remains BORROWED (assigned to next user)
+            System.out.println("DEBUG: Setting book " + book.getId() + " status to BORROWED");
+            book.setStatus(BookStatus.BORROWED);
+            book.setUpdatedAt(LocalDateTime.now());
+
+            // Mark the reservation as FULFILLED
+            nextReservation.setStatus(ReservationStatus.FULFILLED);
+            nextReservation.setUpdatedAt(LocalDateTime.now());
+
+            // Persist changes
+            loanRepository.persist(newLoan);
+            System.out.println("DEBUG: Before persisting book " + book.getId() + " with status " + book.getStatus());
+            bookRepository.persist(book);
+            System.out.println("DEBUG: After persisting book " + book.getId());
+            reservationRepository.persist(nextReservation); // Persist the reservation
+
+            // Create notifications
+            notificationService.createBookReturnedNotification(loan.getUser().getId(), book.getTitle());
+            notificationService.createReservationAvailableNotification(nextUser.getId(), book.getTitle());
+            notificationService.createBookBorrowedNotification(nextUser.getId(), book.getTitle());
+
+        } else {
+            // No active reservations, book becomes available
+            book.setStatus(BookStatus.AVAILABLE);
+            book.setUpdatedAt(LocalDateTime.now());
+            bookRepository.persist(book);
+
+            // Create notification for book returned
+            notificationService.createBookReturnedNotification(loan.getUser().getId(), book.getTitle());
+        }
 
         // Calculate and create fine if overdue
         if (loan.getDueDate() != null && LocalDate.now().isAfter(loan.getDueDate())) {
