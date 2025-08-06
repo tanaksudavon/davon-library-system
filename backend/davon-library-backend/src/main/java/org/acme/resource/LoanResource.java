@@ -2,6 +2,7 @@ package org.acme.resource;
 
 import org.acme.model.Loan;
 import org.acme.service.LoanService;
+import org.acme.dto.LoanResponseDTO;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -9,6 +10,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Path("/api/loans")
 @Produces(MediaType.APPLICATION_JSON)
@@ -21,7 +23,13 @@ public class LoanResource {
     @GET
     public Response getAllLoans() {
         List<Loan> loans = loanService.getAllLoans();
-        return Response.ok(loans).build();
+
+        // Convert to DTOs to include user information
+        List<LoanResponseDTO> loanResponses = loans.stream()
+                .map(LoanResponseDTO::fromLoan)
+                .collect(Collectors.toList());
+
+        return Response.ok(loanResponses).build();
     }
 
     @GET

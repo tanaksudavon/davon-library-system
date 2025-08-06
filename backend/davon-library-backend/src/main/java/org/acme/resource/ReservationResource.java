@@ -1,6 +1,5 @@
 package org.acme.resource;
 
-//this is deliberate bugged class.
 import org.acme.service.ReservationService;
 import org.acme.model.Reservation;
 
@@ -27,7 +26,8 @@ public class ReservationResource {
         try {
             Reservation reservation = reservationService.createReservation(bookId, userId);
             return Response.status(Response.Status.CREATED)
-                    .entity(reservation)
+                    .entity("{\"message\": \"Reservation created successfully\", \"reservationId\": "
+                            + reservation.getId() + "}")
                     .build();
         } catch (Exception e) {
             return Response.status(Response.Status.BAD_REQUEST)
@@ -41,8 +41,8 @@ public class ReservationResource {
     public Response cancelReservation(@PathParam("reservationId") Long reservationId,
             @PathParam("userId") Long userId) {
         try {
-            Reservation cancelledReservation = reservationService.cancelReservation(reservationId, userId);
-            return Response.ok(cancelledReservation).build();
+            reservationService.cancelReservation(reservationId, userId);
+            return Response.ok("{\"message\": \"Reservation cancelled successfully\"}").build();
         } catch (NotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity("{\"error\": \"" + e.getMessage() + "\"}")
@@ -90,6 +90,19 @@ public class ReservationResource {
         try {
             reservationService.expireOldReservations();
             return Response.ok("{\"message\": \"Old reservations expired\"}").build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("{\"error\": \"" + e.getMessage() + "\"}")
+                    .build();
+        }
+    }
+
+    @POST
+    @Path("/fix-inconsistent")
+    public Response fixInconsistentReservations() {
+        try {
+            int updatedCount = reservationService.fixInconsistentReservations();
+            return Response.ok("{\"message\": \"Fixed " + updatedCount + " inconsistent reservations\"}").build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity("{\"error\": \"" + e.getMessage() + "\"}")

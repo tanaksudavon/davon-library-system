@@ -1,10 +1,11 @@
 package org.acme.resource;
 
-//this is deliberate bugged class.
 import org.acme.service.FineCalculationService;
 import org.acme.model.Fine;
 import org.acme.repository.FineRepository;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -24,29 +25,19 @@ public class FineResource {
     @Inject
     private FineRepository fineRepository;
 
+    @Inject
+    private ObjectMapper objectMapper;
+
     @POST
     @Path("/calculate-overdue")
     public Response calculateOverdueFines() {
         try {
             List<Fine> fines = fineCalculationService.calculateOverdueFines();
-            return Response.ok(fines).build();
-        } catch (Exception e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("{\"error\": \"" + e.getMessage() + "\"}")
-                    .build();
-        }
-    }
+            ObjectNode responseJson = objectMapper.createObjectNode();
+            responseJson.put("message", "Calculated and updated " + fines.size() + " overdue fines.");
+            responseJson.set("fines", objectMapper.valueToTree(fines));
 
-    @POST
-    @Path("/calculate-all-overdue")
-    public Response calculateAllOverdueFines() {
-        try {
-            // This will calculate fines for all overdue loans
-            List<Fine> fines = fineCalculationService.calculateOverdueFines();
-            return Response.ok()
-                    .entity("{\"message\": \"Calculated " + fines.size() + " overdue fines\", \"fines\": "
-                            + fines.size() + "}")
-                    .build();
+            return Response.ok(responseJson).build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity("{\"error\": \"" + e.getMessage() + "\"}")

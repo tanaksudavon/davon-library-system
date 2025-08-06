@@ -54,6 +54,7 @@ public class BookResource {
             }
             Loan loan = loanService.borrowBook(bookId, userId);
             return Response.ok(loan).build();
+
         } catch (Exception e) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity("{\"error\": \"" + e.getMessage() + "\"}")
@@ -63,9 +64,15 @@ public class BookResource {
 
     @PUT
     @Path("/{id}/return")
-    public Response returnBook(@PathParam("id") Long bookId) {
+    public Response returnBook(@PathParam("id") Long bookId, @QueryParam("userId") Long userId) {
         try {
-            // Find the active loan for this book
+            if (userId == null) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity("{\"error\": \"User ID is required\"}")
+                        .build();
+            }
+
+            // Find the active loan for this book BY THIS SPECIFIC USER
             List<Loan> activeLoans = loanService.getActiveLoansByBookId(bookId);
 
             if (activeLoans.isEmpty()) {
@@ -74,8 +81,16 @@ public class BookResource {
                         .build();
             }
 
-            // Return the first active loan (there should only be one)
-            Loan returnedLoan = loanService.returnBook(activeLoans.get(0).getId());
+            // Verify that the current user is the one who borrowed this book
+            Loan activeLoan = activeLoans.get(0);
+            if (!activeLoan.getUser().getId().equals(userId)) {
+                return Response.status(Response.Status.FORBIDDEN)
+                        .entity("{\"error\": \"You can only return books that you have borrowed\"}")
+                        .build();
+            }
+
+            // Return the loan (only if user owns it)
+            Loan returnedLoan = loanService.returnBook(activeLoan.getId());
             return Response.ok(returnedLoan).build();
         } catch (Exception e) {
             return Response.status(Response.Status.BAD_REQUEST)
