@@ -3,6 +3,7 @@
 import { useCallback, useMemo } from 'react';
 import { useLibrary } from '@/contexts/LibraryContext';
 import { useAuthStore } from '@/lib/store/auth-store';
+import { UserRole } from '@/lib/api/types';
 
 export function useDashboard() {
   const { state, actions, dispatch } = useLibrary();
@@ -24,8 +25,8 @@ export function useDashboard() {
       },
       users: {
         total: users.length,
-        admins: users.filter(u => u.role === 'LIBRARIAN').length,
-        regularUsers: users.filter(u => u.role === 'MEMBER').length,
+        admins: users.filter(u => u.role === UserRole.LIBRARIAN).length,
+        regularUsers: users.filter(u => u.role === UserRole.MEMBER).length,
         recentlyJoined: users.filter(u => {
           if (!u.createdAt) return false;
           const joinDate = new Date(u.createdAt);
@@ -92,7 +93,7 @@ export function useDashboard() {
     if (!user) return null;
 
     // For regular users, show their borrowed books and history
-    if (user.role === 'user') {
+    if (user.role === UserRole.MEMBER) {
       // Mock user's borrowed books (in real app, would filter by user ID)
       const userBooks = state.books.filter(book => book.status === 'BORROWED').slice(0, 3);
       
@@ -123,7 +124,7 @@ export function useDashboard() {
 
   // Quick actions for dashboard
   const quickActions = useMemo(() => {
-    if (!user || user.role !== 'admin') return [];
+    if (!user || user.role !== UserRole.LIBRARIAN) return [];
 
     return [
       {
@@ -187,6 +188,9 @@ export function useDashboard() {
     }
   }, [actions]);
 
+  const isAdmin = user?.role === UserRole.LIBRARIAN;
+  const isUser = user?.role === UserRole.MEMBER;
+
   return {
     // State
     loading: state.loading.books || state.loading.users,
@@ -207,7 +211,7 @@ export function useDashboard() {
     refreshDashboard,
 
     // Utilities
-    isAdmin: user?.role === 'admin',
-    isUser: user?.role === 'user',
+    isAdmin: isAdmin,
+    isUser: isUser,
   };
 } 

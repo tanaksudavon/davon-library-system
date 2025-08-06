@@ -13,9 +13,10 @@ export enum UserRole {
 }
 
 export enum LoanStatus {
-  ACTIVE = 'ACTIVE',
+  BORROWED = 'BORROWED',
   RETURNED = 'RETURNED',
   OVERDUE = 'OVERDUE',
+  LOST = 'LOST',
 }
 
 export enum ReservationStatus {

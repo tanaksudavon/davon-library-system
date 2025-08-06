@@ -222,6 +222,21 @@ export class FineService {
   }
 
   /**
+   * Calculate overdue fines for all users
+   */
+  async calculateOverdueFines(): Promise<{ message: string; fines: Fine[] }> {
+    try {
+      return await httpClient.post<{ message: string; fines: Fine[] }>(
+        API_CONFIG.ENDPOINTS.FINES.CALCULATE_OVERDUE,
+        {}
+      );
+    } catch (error) {
+      console.error('Failed to calculate overdue fines:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Generate overdue fine for a loan
    */
   async generateOverdueFine(
@@ -247,4 +262,4 @@ export class FineService {
 }
 
 // Create and export singleton instance
-export const fineService = new FineService(); 
+export const fineService = new FineService();

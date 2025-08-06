@@ -299,10 +299,10 @@ export class BookService {
   /**
    * Return a book
    */
-  async returnBook(bookId: number): Promise<Loan> {
+  async returnBook(bookId: number, userId: number): Promise<Loan> {
     try {
       return await httpClient.put<Loan>(
-        `${API_CONFIG.ENDPOINTS.BOOKS.BY_ID(bookId)}/return`,
+        `${API_CONFIG.ENDPOINTS.BOOKS.BY_ID(bookId)}/return?userId=${userId}`,
         {}
       );
     } catch (error) {

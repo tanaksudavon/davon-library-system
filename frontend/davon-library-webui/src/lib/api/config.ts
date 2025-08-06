@@ -46,6 +46,7 @@ export const API_CONFIG = {
       USER_FINES: (userId: number) => `/api/fines/user/${userId}`,
       USER_TOTAL: (userId: number) => `/api/fines/user/${userId}/total`,
       PAY: (fineId: number) => `/api/fines/${fineId}/pay`,
+      CALCULATE_OVERDUE: '/api/fines/calculate-overdue',
     },
     // Search
     SEARCH: {
@@ -59,7 +60,7 @@ export const API_CONFIG = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
-  TIMEOUT: 10000, // 10 seconds
+  TIMEOUT: 1000000, // 1000 seconds
 } as const;
 
-export default API_CONFIG; 
+export default API_CONFIG;

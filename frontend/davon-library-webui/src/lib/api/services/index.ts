@@ -10,6 +10,7 @@ export { categoryService } from './category.service';
 export { authorService } from './author.service';
 export { reservationService } from './reservation.service';
 export { fineService } from './fine.service';
+export { favoriteService } from './favorite.service';
 
 // Export useful types that we know exist
 export type { 
@@ -27,6 +28,9 @@ export type {
   FineCreateRequest, 
   FineUpdateRequest 
 } from './fine.service';
+export type { 
+  Favorite 
+} from './favorite.service';
 
 // Export types for convenience
 export * from '../types'; 
