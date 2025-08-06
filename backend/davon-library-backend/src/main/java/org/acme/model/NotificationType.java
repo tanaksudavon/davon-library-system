@@ -1,0 +1,13 @@
+package org.acme.model;
+
+public enum NotificationType {
+    BOOK_BORROWED,
+    BOOK_RETURNED,
+    BOOK_RESERVED,
+    RESERVATION_AVAILABLE,
+    RESERVATION_CANCELLED,
+    FINE_ISSUED,
+    FINE_PAID,
+    BOOK_OVERDUE,
+    RESERVATION_EXPIRED
+}

@@ -41,6 +41,9 @@ public class Reservation {
     @Column(name = "priority_level")
     private Integer priorityLevel;
 
+    @Column(name = "queue_position")
+    private Integer queuePosition;
+
     private String notes;
 
     @Column(name = "created_at")

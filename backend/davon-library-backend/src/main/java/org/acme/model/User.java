@@ -69,6 +69,10 @@ public class User {
     @JsonManagedReference("user-fines")
     private List<Fine> fines;
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonManagedReference("user-favorites")
+    private List<Favorite> favorites;
+
     // Constructor that matches what subclasses expect (without collection fields)
     public User(Long id, String username, String password, String email, String firstName, String lastName,
             String phoneNumber, UserRole role, LocalDateTime createdAt, LocalDateTime updatedAt) {
